@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chrome Mirror — Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <!-- ================== LOGIN SCREEN ================== -->
+  <section id="loginScreen" class="screen">
+    <div class="login-card">
+      <div class="brand">
+        <div class="brand-mark" style="background: #fff; padding: 3px;">
+          <img src="icon.png" alt="Logo" style="width: 100%; height: 100%; border-radius: inherit; object-fit: contain;" />
+        </div>
+        <div>
+          <h1>Chrome Mirror</h1>
+          <p class="muted">Admin Console</p>
+        </div>
+      </div>
+      <form id="loginForm">
+        <label class="field">
+          <span>Email</span>
+          <input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@example.com" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="loginPass" type="password" autocomplete="current-password" required placeholder="••••••••" />
+        </label>
+        <button class="btn primary block" id="loginBtn" type="submit">Sign in</button>
+        <p id="loginError" class="error-text" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================== DASHBOARD ================== -->
+  <section id="dashScreen" class="screen" hidden>
+    <header class="topbar">
+      <div class="brand small">
+        <div class="brand-mark" style="background: #fff; padding: 2px;">
+          <img src="icon.png" alt="Logo" style="width: 100%; height: 100%; border-radius: inherit; object-fit: contain;" />
+        </div>
+        <strong>Chrome Mirror · Admin</strong>
+      </div>
+      <div class="topbar-right">
+        <span id="adminEmail" class="muted"></span>
+        <button class="btn ghost" id="logoutBtn">Sign out</button>
+      </div>
+    </header>
+
+    <main class="dash">
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat"><span id="statTotal" class="stat-num">—</span><span class="muted">Total</span></div>
+        <div class="stat"><span id="statOnline" class="stat-num">—</span><span class="muted">Online now</span></div>
+        <div class="stat"><span id="statActive" class="stat-num">—</span><span class="muted">Active</span></div>
+        <div class="stat"><span id="statSuspended" class="stat-num">—</span><span class="muted">Suspended</span></div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <input id="searchInput" class="input grow" type="search" placeholder="Search by key or label…" />
+        <select id="filterStatus" class="input">
+          <option value="">All statuses</option>
+          <option value="unused">Unused</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <label class="switch-wrap">
+          <input id="onlyOnline" type="checkbox" />
+          <span>Online only</span>
+        </label>
+        <button class="btn primary" id="generateBtn">+ Generate license</button>
+        <button class="btn ghost" id="refreshBtn" title="Refresh">↻ Refresh</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table id="licTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Label</th>
+              <th>Status</th>
+              <th>Device</th>
+              <th>Last seen</th>
+              <th>Created</th>
+              <th>Expires</th>
+              <th class="ta-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="licBody">
+            <tr><td colspan="8" class="muted ta-center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </section>
+
+  <!-- ================== GENERATE MODAL ================== -->
+  <div id="genModal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>Generate license</h2>
+      <label class="field">
+        <span>Label (customer name / note)</span>
+        <input id="genLabel" type="text" placeholder="e.g. John Doe — March 2026" />
+      </label>
+      <label class="field">
+        <span>Max devices</span>
+        <input id="genMax" type="number" min="1" max="10" value="1" />
+      </label>
+      <label class="field">
+        <span>Expires at (leave empty = never)</span>
+        <input id="genExpires" type="datetime-local" />
+      </label>
+      <label class="field">
+        <span>Notes (private)</span>
+        <textarea id="genNotes" rows="2" placeholder="optional"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="genCancel">Cancel</button>
+        <button class="btn primary" id="genConfirm">Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== KEY REVEAL MODAL ================== -->
+  <div id="keyModal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>License created ✓</h2>
+      <p class="muted">Give this key to your customer. Store it somewhere safe — you can always see it again in the table.</p>
+      <div class="key-display">
+        <code id="keyReveal"></code>
+        <button class="btn ghost small" id="copyKeyBtn">Copy</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" id="keyClose">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== TOAST ================== -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

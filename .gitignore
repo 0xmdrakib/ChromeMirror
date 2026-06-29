@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.build/
+*.log
+.DS_Store
+
+# Secrets (NEVER commit these)
+.env
+supabase/.env
+admin/.env
+
+# Bytecode build artifacts
+*.jsc
+
+# Supabase local
+supabase/.temp/

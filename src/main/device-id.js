@@ -1,0 +1,102 @@
+'use strict';
+
+// ============================================================================
+// Device fingerprinting for Windows.
+//
+// Combines several stable, hardware-backed identifiers into a single SHA-256
+// hash. No native modules, no paid dependencies — only built-in `child_process`
+// calls to Windows commands. If one source fails (e.g. wmic removed on newer
+// builds), the others keep the fingerprint stable.
+//
+// Sources:
+//   1. HKLM MachineGuid  (stable across OS reinstalls on same hardware? NO —
+//      it resets on OS reinstall, but stable across app runs / updates.)
+//   2. BIOS/SMBIOS UUID  (motherboard UUID — survives OS reinstalls)
+//   3. C: volume serial  (changes if C: is reformatted — a secondary signal)
+//
+// We also expose richer machine_info (hostname, CPU, OS) for the admin's audit
+// log — that data is NOT part of the binding hash, only for human debugging.
+// ============================================================================
+
+const { execFile } = require('child_process');
+const crypto = require('crypto');
+const os = require('os');
+
+function run(cmd, args, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout: timeoutMs, windowsHide: true }, (err, stdout) => {
+      resolve(err ? '' : (stdout || '').toString());
+    });
+  });
+}
+
+/** Pull the MachineGuid from the registry. */
+async function machineGuid() {
+  const out = await run('reg.exe', [
+    'query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid',
+  ]);
+  const m = /MachineGuid\s+REG_SZ\s+([0-9a-fA-F-]{30,})/i.exec(out || '');
+  return m ? m[1].trim() : '';
+}
+
+/** SMBIOS/baseboard UUID via PowerShell (preferred over deprecated wmic). */
+async function smbiosUuid() {
+  // Try PowerShell first (wmic is deprecated/removed on Windows 11 24H2+).
+  const ps = await run('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-Command',
+    '(Get-CimInstance Win32_ComputerSystemProduct).UUID',
+  ], 6000);
+  const cleaned = (ps || '').trim();
+  if (cleaned && /^[0-9a-fA-F-]{30,}$/.test(cleaned) && !/^0+-0+$/.test(cleaned)) {
+    return cleaned;
+  }
+  // Fallback: wmic (older systems).
+  const w = await run('wmic.exe', ['csproduct', 'get', 'UUID']);
+  const m = /([0-9a-fA-F-]{30,})/i.exec(w || '');
+  const v = m ? m[1].trim() : '';
+  return v && !/^0+-0+$/.test(v) ? v : '';
+}
+
+/** C: volume serial number (e.g. "ABCD-1234"). */
+async function volumeSerial() {
+  const out = await run('cmd.exe', ['/c', 'vol', 'C:']);
+  const m = /([0-9A-Fa-f]{4}-[0-9A-Fa-f]{4})/.exec(out || '');
+  return m ? m[1].toUpperCase() : '';
+}
+
+/**
+ * Compute the stable device id. Format: 32 hex chars (SHA-256 truncated).
+ * Caches the result so repeated calls are free.
+ */
+let _cache = null;
+async function getDeviceId() {
+  if (_cache) return _cache;
+
+  const parts = await Promise.all([machineGuid(), smbiosUuid(), volumeSerial()]);
+  const present = parts.filter(Boolean);
+  if (!present.length) {
+    // Last-resort fallback so the app still has *something* to bind to.
+    present.push(os.hostname() || 'unknown');
+    present.push(String((os.networkInterfaces() && Object.keys(os.networkInterfaces()).join('|')) || 'nics'));
+  }
+
+  const material = parts.map((s) => s || '').join('|');
+  _cache = crypto.createHash('sha256').update(material).digest('hex').slice(0, 32);
+  return _cache;
+}
+
+/** Richer, non-binding machine info for the admin audit log. */
+async function getMachineInfo() {
+  const cpus = os.cpus() || [];
+  return {
+    hostname: os.hostname(),
+    platform: os.platform(),
+    osRelease: os.release(),
+    cpu: cpus[0] ? cpus[0].model : 'unknown',
+    cpuCount: cpus.length,
+    memGb: Math.round((os.totalmem() / 1024 / 1024 / 1024) * 10) / 10,
+    appTs: Date.now(),
+  };
+}
+
+module.exports = { getDeviceId, getMachineInfo };

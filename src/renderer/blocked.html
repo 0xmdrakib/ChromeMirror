@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chrome Mirror — Locked</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="block-icon">
+        <!-- lock glyph -->
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1 id="title">Access Locked</h1>
+      <p class="sub" id="message">
+        Your license is no longer active on this device. Please contact the
+        administrator to restore access.
+      </p>
+
+      <button class="auth-btn" id="retryBtn" type="button">Retry</button>
+
+      <p class="auth-foot">
+        If you believe this is an error, share this device's details with your
+        administrator.
+      </p>
+    </div>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
