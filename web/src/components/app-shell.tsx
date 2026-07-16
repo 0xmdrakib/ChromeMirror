@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   Activity,
   ExternalLink,
@@ -26,6 +27,8 @@ type Props = {
 export function AppShell({ user, isAdmin, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const showAvatar = Boolean(user.image) && !avatarFailed;
 
   async function signOut() {
     await authClient.signOut();
@@ -89,10 +92,22 @@ export function AppShell({ user, isAdmin, children }: Props) {
             <strong>{pathname.startsWith("/admin") ? "Operations" : "Your access"}</strong>
           </div>
           <div className="account-cluster">
-            {user.image ? (
-              <Image className="account-avatar" src={user.image} alt="" width={32} height={32} />
+            {showAvatar && user.image ? (
+              <Image
+                className="account-avatar"
+                src={user.image}
+                alt={`${user.name} profile photo`}
+                width={34}
+                height={34}
+                sizes="34px"
+                referrerPolicy="no-referrer"
+                unoptimized
+                onError={() => setAvatarFailed(true)}
+              />
             ) : (
-              <span className="account-avatar fallback">{initials(user.name)}</span>
+              <span className="account-avatar fallback" aria-label={`${user.name} profile`}>
+                {initials(user.name, user.email)}
+              </span>
             )}
             <span className="account-copy">
               <strong>{user.name}</strong>
@@ -109,11 +124,14 @@ export function AppShell({ user, isAdmin, children }: Props) {
   );
 }
 
-function initials(value: string) {
+function initials(name: string, email: string) {
+  const value = name.trim() || email.split("@")[0] || "User";
+
   return value
     .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase() || "U";
 }
