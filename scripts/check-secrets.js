@@ -63,7 +63,7 @@ for (const file of listed.stdout.split('\0').filter(Boolean)) {
   }
 
   const assignmentPattern =
-    /^\s*(?:export\s+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY)[A-Z0-9_]*)\s*=\s*([^\r\n#]*)/gm;
+    /^[ \t]*(?:export[ \t]+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY)[A-Z0-9_]*)[ \t]*=[ \t]*([^\r\n#]*)/gm;
   for (const match of text.matchAll(assignmentPattern)) {
     if (!isPlaceholder(match[2])) record(file, `non-placeholder ${match[1]}`, match.index, text);
   }
