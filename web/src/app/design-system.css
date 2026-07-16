@@ -1049,9 +1049,12 @@ select:focus-visible {
   }
 
   .portal-sidebar {
-    position: static;
+    position: sticky;
+    z-index: 30;
     width: 100%;
     height: auto;
+    min-height: 64px;
+    top: 0;
     padding: 10px 16px;
     flex-direction: row;
     align-items: center;
@@ -1090,6 +1093,9 @@ select:focus-visible {
   }
 
   .portal-topbar {
+    position: sticky;
+    z-index: 20;
+    top: 64px;
     padding: 0 18px;
   }
 
@@ -1153,28 +1159,31 @@ select:focus-visible {
   }
 
   .portal-sidebar {
-    padding: 10px 12px;
+    min-height: 62px;
+    padding: 7px 10px;
     gap: 8px;
   }
 
   .portal-nav {
     justify-content: space-around;
-    gap: 2px;
+    gap: 3px;
     overflow: visible;
   }
 
   .portal-nav a {
-    min-width: 38px;
-    min-height: 38px;
-    padding: 0 9px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 4px 6px;
+    flex: 1 1 0;
+    flex-direction: column;
     justify-content: center;
-    gap: 0;
-    font-size: 0;
+    gap: 3px;
+    font-size: 10px;
   }
 
   .portal-nav a svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
 
   .preview-body {
@@ -1192,11 +1201,17 @@ select:focus-visible {
   }
 
   .portal-topbar {
-    padding: 0 14px;
+    height: 60px;
+    top: 62px;
+    padding: 0 12px;
   }
 
   .account-copy {
     display: none;
+  }
+
+  .account-cluster {
+    gap: 6px;
   }
 
   .portal-content {
