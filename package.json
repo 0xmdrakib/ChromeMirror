@@ -17,7 +17,7 @@
     "prebuild": "npx electron scripts/compile.js",
     "build:web": "npm --prefix web run build",
     "pack": "npm run prebuild && electron-builder --dir",
-    "dist": "npm run prebuild && electron-builder",
+    "dist": "npm run prebuild && electron-builder --publish never",
     "verify": "npm run scan:secrets && npm run lint && npm run typecheck && npm run test:all && npm run prebuild && npm run build:web"
   },
   "build": {
