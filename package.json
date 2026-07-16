@@ -27,6 +27,7 @@
     "directories": {
       "output": "dist"
     },
+    "artifactName": "Chrome-Mirror-${version}-${os}-${arch}.${ext}",
     "files": [
       "build-app/**/*",
       "package.json",
