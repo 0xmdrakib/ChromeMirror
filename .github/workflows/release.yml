@@ -36,27 +36,12 @@ jobs:
       - run: npm test
       - run: npm run dist
 
-      - name: Create SHA-256 checksums
-        shell: pwsh
-        run: |
-          $artifacts = Get-ChildItem -LiteralPath dist -File |
-            Where-Object { $_.Extension -in ".exe", ".zip" }
-          if ($artifacts.Count -lt 2) {
-            throw "Expected both the installer and ZIP artifacts."
-          }
-          $lines = foreach ($artifact in $artifacts) {
-            $hash = (Get-FileHash -LiteralPath $artifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $($artifact.Name)"
-          }
-          $lines | Set-Content -LiteralPath dist/SHA256SUMS.txt -Encoding ascii
-
       - uses: actions/upload-artifact@v4
         with:
           name: chrome-mirror-windows-${{ github.ref_name }}
           path: |
             dist/*.exe
             dist/*.zip
-            dist/SHA256SUMS.txt
           if-no-files-found: error
 
       - uses: softprops/action-gh-release@v2
@@ -66,4 +51,3 @@ jobs:
           files: |
             dist/*.exe
             dist/*.zip
-            dist/SHA256SUMS.txt

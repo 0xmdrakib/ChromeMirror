@@ -28,34 +28,32 @@
   --shadow: 0 8px 24px rgba(24, 36, 48, 0.07);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #11161b;
-    --surface: #182027;
-    --surface-2: #1d262e;
-    --surface-3: #26313a;
-    --text: #edf2f5;
-    --muted: #a3afb8;
-    --faint: #75838e;
-    --line: #2d3942;
-    --line-strong: #3b4953;
-    --accent: #55aab0;
-    --accent-hover: #6bbbc0;
-    --accent-soft: #203a3d;
-    --blue: #79a8ed;
-    --blue-soft: #23344b;
-    --green: #6cc9a4;
-    --green-soft: #203a32;
-    --amber: #e1ad56;
-    --amber-soft: #3d3221;
-    --coral: #e28c7c;
-    --coral-soft: #412c2a;
-    --violet: #b5a1e4;
-    --violet-soft: #332c45;
-    --red: #ef8c94;
-    --red-soft: #44282c;
-    --shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
-  }
+html[data-theme="dark"] {
+  --bg: #11161b;
+  --surface: #182027;
+  --surface-2: #1d262e;
+  --surface-3: #26313a;
+  --text: #edf2f5;
+  --muted: #a3afb8;
+  --faint: #75838e;
+  --line: #2d3942;
+  --line-strong: #3b4953;
+  --accent: #55aab0;
+  --accent-hover: #6bbbc0;
+  --accent-soft: #203a3d;
+  --blue: #79a8ed;
+  --blue-soft: #23344b;
+  --green: #6cc9a4;
+  --green-soft: #203a32;
+  --amber: #e1ad56;
+  --amber-soft: #3d3221;
+  --coral: #e28c7c;
+  --coral-soft: #412c2a;
+  --violet: #b5a1e4;
+  --violet-soft: #332c45;
+  --red: #ef8c94;
+  --red-soft: #44282c;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
 * {
@@ -69,6 +67,11 @@ body {
 
 html {
   background: var(--bg);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -191,6 +194,25 @@ select:focus-visible {
   color: var(--accent);
 }
 
+.theme-toggle {
+  position: relative;
+}
+
+.theme-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.theme-icon-to-light,
+html[data-theme="dark"] .theme-icon-to-dark {
+  display: none;
+}
+
+html[data-theme="dark"] .theme-icon-to-light {
+  display: block;
+}
+
 .notice-bar {
   min-height: 42px;
   padding: 9px 12px;
@@ -307,6 +329,7 @@ select:focus-visible {
 }
 
 .sign-in-panel {
+  position: relative;
   min-height: 100vh;
   padding: 48px clamp(34px, 6vw, 86px);
   display: flex;
@@ -314,6 +337,12 @@ select:focus-visible {
   justify-content: center;
   border-right: 1px solid var(--line);
   background: var(--surface);
+}
+
+.sign-in-theme-toggle {
+  position: absolute;
+  top: 28px;
+  right: 28px;
 }
 
 .sign-in-brand {
@@ -1737,9 +1766,12 @@ button.table-row:hover,
   }
 
   .portal-sidebar {
-    position: static;
+    position: sticky;
+    z-index: 30;
     width: 100%;
     height: auto;
+    min-height: 64px;
+    top: 0;
     padding: 11px 14px;
     flex-direction: row;
     align-items: center;
@@ -1771,6 +1803,9 @@ button.table-row:hover,
   }
 
   .portal-topbar {
+    position: sticky;
+    z-index: 20;
+    top: 64px;
     padding: 0 18px;
   }
 
@@ -1802,29 +1837,65 @@ button.table-row:hover,
 }
 
 @media (max-width: 600px) {
+  .sign-in-panel {
+    min-height: 100svh;
+    padding: 28px 20px 30px;
+  }
+
+  .sign-in-theme-toggle {
+    top: 24px;
+    right: 20px;
+  }
+
+  .sign-in-brand {
+    margin-bottom: 64px;
+    padding-right: 52px;
+  }
+
+  .sign-in-copy p {
+    line-height: 1.55;
+  }
+
+  .google-button {
+    margin-top: 28px;
+  }
+
+  .sign-in-panel footer {
+    margin-top: auto;
+    padding-top: 28px;
+  }
+
+  .sign-in-aside {
+    min-height: 390px;
+    padding: 28px 12px;
+  }
+
   .portal-sidebar {
-    padding: 10px 12px;
+    min-height: 62px;
+    padding: 7px 10px;
     gap: 8px;
   }
 
   .portal-nav {
     justify-content: space-around;
-    gap: 2px;
+    gap: 3px;
     overflow: visible;
   }
 
   .portal-nav a {
-    min-width: 38px;
-    min-height: 38px;
-    padding: 0 9px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 4px 6px;
+    flex: 1 1 0;
+    flex-direction: column;
     justify-content: center;
-    gap: 0;
-    font-size: 0;
+    gap: 3px;
+    font-size: 0.61rem;
   }
 
   .portal-nav a svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
 
   .preview-body {
@@ -1848,25 +1919,32 @@ button.table-row:hover,
     display: none;
   }
 
+  .portal-topbar {
+    height: 60px;
+    top: 62px;
+    padding: 0 12px;
+  }
+
+  .account-cluster {
+    gap: 6px;
+  }
+
   .portal-topbar > div:first-child {
     min-width: 0;
   }
 
   .metric-strip,
   .admin-metrics {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .metric-strip > div,
-  .admin-metrics > div,
   .metric-strip > div:nth-child(2),
   .admin-metrics > div:nth-child(2) {
     border-right: 0;
-    border-bottom: 1px solid var(--line);
   }
 
-  .metric-strip > div:last-child,
-  .admin-metrics > div:last-child {
+  .metric-strip > div:nth-child(n + 3),
+  .admin-metrics > div:nth-child(n + 3) {
     border-bottom: 0;
   }
 

@@ -33,33 +33,31 @@
   --shadow: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1c1b17;
-    --surface: #24231e;
-    --surface-2: #292823;
-    --surface-3: #37352e;
-    --text: #f7f7f4;
-    --muted: #b7b3a8;
-    --faint: #8e8a81;
-    --line: #3d3b34;
-    --line-strong: #555248;
-    --accent: #ff6a24;
-    --accent-hover: #f54e00;
-    --accent-soft: #40261a;
-    --blue: #f7f7f4;
-    --blue-soft: #37352e;
-    --green: #72c6a6;
-    --green-soft: #20372f;
-    --amber: #e1b260;
-    --amber-soft: #3f3422;
-    --coral: #f7f7f4;
-    --coral-soft: #37352e;
-    --violet: #f7f7f4;
-    --violet-soft: #37352e;
-    --red: #ef7795;
-    --red-soft: #482630;
-  }
+html[data-theme="dark"] {
+  --bg: #1c1b17;
+  --surface: #24231e;
+  --surface-2: #292823;
+  --surface-3: #37352e;
+  --text: #f7f7f4;
+  --muted: #b7b3a8;
+  --faint: #8e8a81;
+  --line: #3d3b34;
+  --line-strong: #555248;
+  --accent: #ff6a24;
+  --accent-hover: #f54e00;
+  --accent-soft: #40261a;
+  --blue: #f7f7f4;
+  --blue-soft: #37352e;
+  --green: #72c6a6;
+  --green-soft: #20372f;
+  --amber: #e1b260;
+  --amber-soft: #3f3422;
+  --coral: #f7f7f4;
+  --coral-soft: #37352e;
+  --violet: #f7f7f4;
+  --violet-soft: #37352e;
+  --red: #ef7795;
+  --red-soft: #482630;
 }
 
 html,
@@ -1202,7 +1200,7 @@ select:focus-visible {
   }
 
   .portal-content {
-    padding: 30px 14px 48px;
+    padding: 26px 12px 48px;
   }
 
   .page-heading h1 {
@@ -1214,12 +1212,27 @@ select:focus-visible {
   .payment-surface,
   .chart-surface,
   .code-surface {
-    padding: 18px;
+    padding: 16px;
   }
 
   .metric-strip > div,
   .admin-metrics > div {
-    padding: 16px 18px;
+    padding: 14px 12px;
+    gap: 9px;
+  }
+
+  .metric-icon,
+  .metric-icon.green,
+  .metric-icon.blue,
+  .metric-icon.coral,
+  .metric-icon.violet {
+    width: 34px;
+    height: 34px;
+  }
+
+  .metric-strip strong,
+  .admin-metrics strong {
+    font-size: 14px;
   }
 
   .code-controls {

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { LoaderCircle, LogIn } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SignInPanel({ googleConfigured }: { googleConfigured: boolean }) {
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,7 @@ export function SignInPanel({ googleConfigured }: { googleConfigured: boolean })
   return (
     <main className="sign-in-page">
       <section className="sign-in-panel">
+        <ThemeToggle className="sign-in-theme-toggle" />
         <div className="sign-in-brand">
           <Image src="/brand-icon.png" alt="Chrome Mirror" width={46} height={46} priority />
           <span>

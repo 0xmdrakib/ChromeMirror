@@ -217,7 +217,7 @@ npm --prefix web audit
 
 CI separately checks desktop syntax and tests, web linting, type checking, tests,
 builds, migration drift, and credential-like values. Tags matching `v*` produce
-a Windows installer, ZIP, and `SHA256SUMS.txt` GitHub release.
+a Windows installer and ZIP GitHub release.
 
 Before making a fork public, review the complete Git history for old credentials
 as well as the current tree.

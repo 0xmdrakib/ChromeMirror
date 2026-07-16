@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type Props = {
   user: {
@@ -92,6 +93,7 @@ export function AppShell({ user, isAdmin, children }: Props) {
             <strong>{pathname.startsWith("/admin") ? "Operations" : "Your access"}</strong>
           </div>
           <div className="account-cluster">
+            <ThemeToggle />
             {showAvatar && user.image ? (
               <Image
                 className="account-avatar"

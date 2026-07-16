@@ -3,6 +3,15 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "./design-system.css";
 
+const themeScript = `
+  try {
+    var savedTheme = window.localStorage.getItem("chrome-mirror-theme");
+    document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+  } catch (error) {
+    document.documentElement.dataset.theme = "light";
+  }
+`;
+
 const interfaceFont = Inter({
   variable: "--font-interface",
   subsets: ["latin"],
@@ -34,8 +43,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-theme="light"
+      suppressHydrationWarning
       className={`${interfaceFont.variable} ${codeFont.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );
