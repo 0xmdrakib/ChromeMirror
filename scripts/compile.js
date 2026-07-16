@@ -173,6 +173,15 @@ function obfuscateSource(code, filePath) {
   }
 
   // --- 5. Write a hardened package.json for the build ------------------------
+  const licenseApiUrl = String(
+    process.env.LICENSE_API_URL || 'http://localhost:3000/api/v1/license'
+  ).replace(/\/$/, '');
+  fs.writeFileSync(
+    path.join(outMainDir, 'runtime-config.json'),
+    JSON.stringify({ licenseApiUrl }, null, 2)
+  );
+  console.log('compile: wrote main/runtime-config.json');
+
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const buildPkg = {
     name: pkg.name,

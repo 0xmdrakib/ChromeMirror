@@ -4,11 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+const MAX_PROFILES = 25;
+const WINDOW_LAYOUTS = new Set(['minimized', 'tiled', 'last-used']);
+
 function defaultSettings() {
   return {
     skipPassword: false,   // do not mirror values typed into password fields
     coordFallback: true,   // when an element can't be resolved, click by coordinates
     syncFullFieldValues: false, // avoid overwriting follower account-specific form values
+    windowLayout: 'minimized',
   };
 }
 
@@ -25,6 +29,7 @@ class ProfileStore {
     this.configPath = path.join(userDataPath, 'mirror-config.json');
     fs.mkdirSync(this.profilesDir, { recursive: true });
     this.config = this._load();
+    this._save();
   }
 
   _load() {
@@ -33,10 +38,14 @@ class ProfileStore {
       c.profiles = Array.isArray(c.profiles) ? c.profiles : [];
       c.settings = Object.assign(defaultSettings(), c.settings || {});
       if (!('leaderId' in c)) c.leaderId = null;
-      if (!('followerId' in c)) c.followerId = null;
+      if (!Array.isArray(c.followerIds)) {
+        c.followerIds = c.followerId ? [c.followerId] : [];
+      }
+      delete c.followerId;
+      if (!WINDOW_LAYOUTS.has(c.settings.windowLayout)) c.settings.windowLayout = 'minimized';
       return c;
     } catch (_) {
-      return { profiles: [], settings: defaultSettings(), leaderId: null, followerId: null };
+      return { profiles: [], settings: defaultSettings(), leaderId: null, followerIds: [] };
     }
   }
 
@@ -53,6 +62,9 @@ class ProfileStore {
   }
 
   create(name) {
+    if (this.config.profiles.length >= MAX_PROFILES) {
+      throw new Error(`Chrome Mirror supports up to ${MAX_PROFILES} profiles.`);
+    }
     const id = crypto.randomBytes(6).toString('hex');
     const dir = path.join(this.profilesDir, id);
     fs.mkdirSync(dir, { recursive: true });
@@ -87,7 +99,7 @@ class ProfileStore {
       }
       this.config.profiles = this.config.profiles.filter((x) => x.id !== id);
       if (this.config.leaderId === id) this.config.leaderId = null;
-      if (this.config.followerId === id) this.config.followerId = null;
+      this.config.followerIds = this.config.followerIds.filter((x) => x !== id);
       this._save();
     }
     return { ok: true };
@@ -102,12 +114,20 @@ class ProfileStore {
   }
 
   getRoles() {
-    return { leaderId: this.config.leaderId, followerId: this.config.followerId };
+    return {
+      leaderId: this.config.leaderId,
+      followerIds: [...this.config.followerIds],
+      windowLayout: this.config.settings.windowLayout,
+    };
   }
 
-  setRoles(leaderId, followerId) {
-    this.config.leaderId = leaderId || null;
-    this.config.followerId = followerId || null;
+  setRoles(leaderId, followerIds, windowLayout) {
+    const knownIds = new Set(this.config.profiles.map((profile) => profile.id));
+    this.config.leaderId = knownIds.has(leaderId) ? leaderId : null;
+    this.config.followerIds = Array.from(new Set(Array.isArray(followerIds) ? followerIds : []))
+      .filter((id) => knownIds.has(id) && id !== this.config.leaderId)
+      .slice(0, MAX_PROFILES - 1);
+    if (WINDOW_LAYOUTS.has(windowLayout)) this.config.settings.windowLayout = windowLayout;
     this._save();
     return this.getRoles();
   }
@@ -118,9 +138,12 @@ class ProfileStore {
 
   setSettings(patch) {
     this.config.settings = Object.assign({}, this.config.settings, patch || {});
+    if (!WINDOW_LAYOUTS.has(this.config.settings.windowLayout)) {
+      this.config.settings.windowLayout = 'minimized';
+    }
     this._save();
     return this.config.settings;
   }
 }
 
-module.exports = { ProfileStore, defaultSettings };
+module.exports = { ProfileStore, defaultSettings, MAX_PROFILES, WINDOW_LAYOUTS };

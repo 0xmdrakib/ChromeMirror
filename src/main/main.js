@@ -6,6 +6,7 @@ const fs = require('fs');
 const { ProfileStore } = require('./profiles');
 const { MirrorEngine } = require('./mirror-engine');
 const { LicenseClient, STATE } = require('./license-client');
+const { createWindowPlan } = require('./window-layout');
 
 let win = null;
 let store = null;
@@ -79,7 +80,7 @@ function createWindow(initialPage = 'index.html') {
   if (process.env.CM_DIAG) {
     win.webContents.once('did-finish-load', async () => {
       const js = `(function(){
-        var ids=['hero','hero-top','flow','leaderSel','followerSel','swapBtn','startBtn','stopBtn','leaderAvatar','toggleLabel'];
+        var ids=['viewTitle','viewSubtitle','selectedCount','leaderSel','followerPicker','startBtn','stopBtn','leaderAvatar','mirrorLabel','layoutSelect','profileList','log','settingsForm'];
         var out={};
         ids.forEach(function(id){
           var el=document.getElementById(id);
@@ -88,7 +89,7 @@ function createWindow(initialPage = 'index.html') {
           out[id]={display:cs.display,vis:cs.visibility,h:Math.round(r.height),w:Math.round(r.width)};
         });
         out.__err=window.__lastError||null;
-        out.__heroHTML=(document.getElementById('hero')||{}).innerHTML ? document.getElementById('hero').innerHTML.length : 'no-hero';
+        out.__contentHTML=(document.querySelector('.content')||{}).innerHTML ? document.querySelector('.content').innerHTML.length : 'no-content';
         return JSON.stringify(out);
       })()`;
       try {
@@ -189,6 +190,7 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', async () => {
   try {
     if (engine) await engine.stop();
+    if (license) await license.release();
   } catch (_) {}
   if (process.platform !== 'darwin') app.quit();
 });
@@ -201,7 +203,9 @@ ipcMain.handle('profiles:rename', (_e, id, name) => store.rename(id, name));
 ipcMain.handle('profiles:delete', (_e, id) => store.remove(id));
 
 ipcMain.handle('roles:get', () => store.getRoles());
-ipcMain.handle('roles:set', (_e, leaderId, followerId) => store.setRoles(leaderId, followerId));
+ipcMain.handle('roles:set', (_e, leaderId, followerIds, windowLayout) =>
+  store.setRoles(leaderId, followerIds, windowLayout)
+);
 
 ipcMain.handle('settings:get', () => store.getSettings());
 ipcMain.handle('settings:set', (_e, patch) => store.setSettings(patch));
@@ -209,29 +213,35 @@ ipcMain.handle('settings:set', (_e, patch) => store.setSettings(patch));
 ipcMain.handle('session:status', () => engine.status());
 
 ipcMain.handle('session:start', async () => {
-  const { leaderId, followerId } = store.getRoles();
-  if (!leaderId || !followerId) throw new Error('Pick both a Leader and a Follower profile.');
-  if (leaderId === followerId) throw new Error('Leader and Follower must be different profiles.');
+  const { leaderId, followerIds, windowLayout } = store.getRoles();
+  if (!leaderId || !Array.isArray(followerIds) || !followerIds.length) {
+    throw new Error('Pick one Leader and at least one Follower profile.');
+  }
+  if (followerIds.includes(leaderId)) throw new Error('Leader and Follower profiles must be different.');
   const leaderProfile = store.get(leaderId);
-  const followerProfile = store.get(followerId);
-  if (!leaderProfile || !followerProfile) throw new Error('Selected profile no longer exists.');
+  const followerProfiles = followerIds.map((id) => store.get(id)).filter(Boolean);
+  if (!leaderProfile || followerProfiles.length !== followerIds.length) {
+    throw new Error('One or more selected profiles no longer exist.');
+  }
 
   store.touch(leaderId);
-  store.touch(followerId);
+  followerIds.forEach((id) => store.touch(id));
 
-  // Side-by-side window layout: leader on the left, follower on the right.
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const half = Math.floor(width / 2);
-  const leaderArgs = ['--window-position=0,0', `--window-size=${half},${height}`];
-  const followerArgs = [`--window-position=${half},0`, `--window-size=${width - half},${height}`];
+  const displays = screen.getAllDisplays();
+  const plan = createWindowPlan(displays, [leaderId, ...followerIds], windowLayout);
+  const leaderArgs = (plan.get(leaderId) || {}).args || [];
+  const followerArgs = new Map(
+    followerIds.map((id) => [id, (plan.get(id) || {}).args || []])
+  );
 
   await engine.start({
     leaderProfile,
-    followerProfile,
+    followerProfiles,
     settings: store.getSettings(),
     executablePath: findChrome(),
     leaderArgs,
     followerArgs,
+    displays,
   });
   return engine.status();
 });
@@ -246,11 +256,22 @@ ipcMain.handle('mirror:set', (_e, on) => {
   return engine.status();
 });
 
+ipcMain.handle('session:focus-profile', (_e, profileId) => engine.focusProfile(profileId));
+ipcMain.handle('session:retry-follower', (_e, profileId) => engine.retryFollower(profileId));
+ipcMain.handle('session:layout', (_e, layout) => {
+  const settings = store.setSettings({ windowLayout: layout });
+  return engine.setWindowLayout(settings.windowLayout, screen.getAllDisplays());
+});
+
 /* --------------------------- License IPC --------------------------------- */
 
 // Boot probe: renderer asks "what state are we in?" to pick its screen.
 ipcMain.handle('license:check', () => {
-  return { state: license.getState(), license: license.getLicense() };
+  return {
+    state: license.getState(),
+    license: license.getLicense(),
+    reason: license.getReason(),
+  };
 });
 
 // Re-check state online (e.g. from Retry button on blocked screen)
@@ -272,5 +293,9 @@ ipcMain.handle('license:activate', async (_e, key) => {
 
 // Current license info (label/status) — for an "About / License" display.
 ipcMain.handle('license:status', () => {
-  return { state: license.getState(), license: license.getLicense() };
+  return {
+    state: license.getState(),
+    license: license.getLicense(),
+    reason: license.getReason(),
+  };
 });

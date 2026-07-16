@@ -1,142 +1,233 @@
 # Chrome Mirror
 
-Chrome Mirror is a self-hosted, secure, and compiled remote browser mirroring application that replicates user actions (clicks, keyboard inputs, scrolls, and navigations) in real-time between a Leader and a Follower Chrome browser profile.
+Chrome Mirror is a Windows desktop application that mirrors one leader Chrome
+profile to as many as 24 follower profiles. This repository also contains an
+optional hosted licensing service, customer portal, and admin dashboard.
 
----
-
-## Overview
-
-Chrome Mirror is built for two things:
-
-- **1:1 Mirroring:** Map any Leader browser tab directly to a Follower browser tab. Every action is copied with Playwright's trusted input replayer.
-- **Licensing & Security:** Securely gate the application using BIOS UUID hardware fingerprinting, remote license validation, heartbeats, and V8 bytecode packaging.
-
-The app focuses on providing a clean control panel for launching paired Chrome sessions, while enforcing strong anti-cloning and licensing protections via a remote Supabase database.
+The source is MIT licensed and self-hostable. Purchases apply to the hosted
+service and official builds, not to the right to read, modify, or self-host the
+source.
 
 ## Features
 
-- Real-time action mirroring (mouse clicks, keyboard typing, page scrolling, and address-bar navigations)
-- Multi-tab synchronization (automatic opening, pairing, and closing of follower tabs)
-- Hardware fingerprinting (keys are bound to a single physical machine using BIOS UUID, OS Volume Serial, and Windows Machine GUID)
-- Background heartbeat monitoring (locks the client application instantly if a license key is deleted or revoked from the administrator console)
-- V8 Bytecode Protection (`bytenode`) to compile main process scripts and licensing logic into machine-like binary `.jsc` files
-- Javascript Obfuscator defenses for renderer UI and preload scripts to prevent reverse-engineering and source inspection
-- Web-based Admin Control Console to generate licenses, manage active devices, monitor live statuses, and delete licenses
-- Portable Windows setup packaged as a standard desktop installer using `electron-builder` with custom branding
+### Desktop
 
-## License & Security States
+- One leader and 1 to 24 simultaneous followers
+- Click, typing, scrolling, navigation, and multi-tab fan-out
+- Per-follower event queues that preserve order and isolate failures
+- Browser launches in batches of three with progress and retry controls
+- Minimized, tiled-across-displays, and last-used window layouts
+- Compact Session, Profiles, Activity, and Settings views
+- System light and dark themes
+- License-key-only activation with a releasable one-computer lease
+- 60-second heartbeats and a 10-minute offline allowance
+- Hardened Windows installer and ZIP builds
 
-### License States
+### Hosted web application
 
-| State | Description | Client Behavior |
-|---|---|---|
-| `unused` | Newly generated key, not yet activated | Prompts user on launch to enter license key |
-| `active` | Key bound to a verified hardware signature | Grants full access to mirroring control panel |
-| `suspended` | Temporarily disabled by the administrator | Locks the client app on next heartbeat check |
-| `cancelled` | Permanently revoked | Wipes local license tokens, prompts for activation |
-| `deleted` | Completely removed from database | Wipes local storage, locks out online client instantly |
+- Google sign-in using self-hosted Better Auth
+- Neon Postgres with Drizzle migrations
+- Customer license, device, redemption, checkout, and payment portal
+- `$20 USD` annual access for 365 days
+- `$30 USD` lifetime upgrade
+- Single-use annual and lifetime access codes
+- NOWPayments hosted invoices and signed, idempotent IPN processing
+- Admin-only users, licenses, payments, devices, revenue, codes, and audit views
+- Admin access restricted to the normalized `ADMIN_EMAIL` value
 
-### Admin Console Actions
+## Repository layout
 
-- **Generate License**: Creates a unique license key in the standard `CMIR-XXXX-XXXX-XXXX-XXXX` format with customizable expiration and labels.
-- **Delete License**: Deletes the license row from the database. Due to database cascades, this instantly clears active device bindings and heartbeat logs, triggering a lockout on the client's next heartbeat ping.
-
-## Tech stack
-
-- **Desktop App:** Electron 42, HTML5 / Vanilla CSS, Javascript
-- **Automation Engine:** Playwright 1.60 (runs in-process, CDP pipe automation)
-- **Backend Database:** Supabase (PostgreSQL tables, database views, row-level security, RPCs)
-- **Code Protection:** Bytenode (V8 bytecode compiler), Javascript Obfuscator
-- **Package Builder:** Electron Builder (compiled Windows NSIS installer)
-
----
-
-## Getting started
-
-### 1. Install dependencies
-
-```bash
-npm install
+```text
+src/                 Electron main, preload, and renderer source
+tests/               Desktop unit tests
+scripts/             Build, syntax, and secret checks
+web/                 Next.js portal, API routes, and Drizzle schema
+web/drizzle/         Committed Postgres migrations
+.github/workflows/   CI and tagged Windows release automation
 ```
 
-### 2. Configure environment variables
+The earlier Supabase backend and static admin console have been removed. No
+Supabase users, licenses, or activations are imported.
 
-Create a `.env` file in the project root. Copy from [.env.example](./.env.example):
+## Requirements
 
-```env
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+- Windows 10 or 11 for the desktop application
+- Google Chrome installed
+- Node.js 22 and npm
+- A Neon Postgres database for the hosted web application
+- Google OAuth credentials
+- A Vercel account for the recommended hosted deployment
+- NOWPayments credentials only when payment checkout is enabled
 
-### 3. Run the development server
+## Desktop development
 
-```bash
+Install dependencies and start Electron:
+
+```powershell
+npm ci
+$env:LICENSE_API_URL = "http://localhost:3000/api/v1/license"
 npm start
 ```
 
-### 4. Build for production
+`LICENSE_API_URL` is the only hosted-service setting used by the desktop app.
+Official builds should set it to an HTTPS URL ending in `/api/v1/license`.
 
-Run the prebuild script to obfuscate assets and compile main files into V8 bytecode:
+Run desktop checks:
 
-```bash
+```powershell
+npm run lint:desktop
+npm test
 npm run prebuild
 ```
 
-### 5. Compile desktop installer package (Optional)
+Create the Windows installer and ZIP:
 
-Compile the final Windows installer executable:
-
-```bash
+```powershell
+$env:LICENSE_API_URL = "https://portal.example.com/api/v1/license"
 npm run dist
 ```
 
-The installer setup executable will be generated at:
-```text
-dist/Chrome Mirror Setup 1.0.0.exe
+Build hardening is generated into `build-app/`; tracked source files are not
+modified.
+
+## Web application setup
+
+Install dependencies:
+
+```powershell
+cd web
+npm ci
+Copy-Item .env.example .env.local
 ```
 
-### 6. Download packaged installer
+Configure `web/.env.local`:
 
-The pre-compiled, secure, and ready-to-run Windows installer `.exe` is available directly on the GitHub Releases page:
-- **Download the latest version**: [Chrome Mirror Releases](https://github.com/0xmdrakib/ChromeMirror/releases)
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Neon pooled Postgres connection string |
+| `BETTER_AUTH_SECRET` | Better Auth signing secret |
+| `BETTER_AUTH_URL` | Public application origin |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `ADMIN_EMAIL` | The only email allowed to access admin pages and APIs |
+| `LICENSE_JWT_SECRET` | Desktop activation-session signing secret |
+| `LICENSE_KEY_ENCRYPTION_KEY` | Base64-encoded 32-byte AES key |
+| `REDEEM_CODE_PEPPER` | Server-only redemption-code HMAC secret |
+| `NOWPAYMENTS_API_KEY` | NOWPayments API key |
+| `NOWPAYMENTS_IPN_SECRET` | NOWPayments IPN signature secret |
+| `NOWPAYMENTS_API_URL` | Sandbox or production API origin |
+| `NEXT_PUBLIC_APP_URL` | Public application origin |
+| `NEXT_PUBLIC_GITHUB_REPO` | Public source repository |
+| `NEXT_PUBLIC_DOWNLOAD_URL` | Official GitHub release download |
 
----
+Generate strong values for the local secrets. For example:
 
-## Usage
-
-### Database & Auth Setup
-
-1. Open your Supabase Dashboard and paste the definitions in `supabase/schema.sql` into the SQL Editor, then click **Run**.
-2. Go to **Authentication** -> **Users** and create your administrator user.
-3. In the SQL Editor, insert your administrator's User UID into the `public.admin_users` table to grant them dashboard permissions:
-   ```sql
-   INSERT INTO public.admin_users (user_id) VALUES ('your_admin_user_uid');
-   ```
-
-### Manage Licenses
-
-1. Open the Admin Console (`admin/index.html`) in your browser and sign in.
-2. Click **Generate License**, fill in details, and click **Generate**.
-3. Copy the key and paste it into the client application to activate the device.
-
----
-
-## Data storage
-
-By default, the client stores its active session token and verified license data locally inside the Electron AppData folder:
-
-```text
-%APPDATA%\chrome-mirror\
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-The admin console connects directly to the Supabase PostgreSQL database. Device bindings and heartbeat logs are automatically managed via cascading deletes when a license is removed.
+Create a fresh Neon project and apply the committed migration:
 
----
+```powershell
+npm run db:migrate
+```
 
-## Safety
+Then start the portal:
 
-Use this for legitimate remote browser sharing and automation coordination. Do not use it to bypass website terms of service, scraping restrictions, or automated login policies.
+```powershell
+npm run dev
+```
+
+The local site is available at `http://localhost:3000`.
+
+## Google OAuth
+
+Create a Google web OAuth client and add these authorized redirect URIs:
+
+```text
+http://localhost:3000/api/auth/callback/google
+https://your-production-domain.example/api/auth/callback/google
+```
+
+Set the matching origins in `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL`. A user
+must sign in with Google before accessing the customer dashboard. Admin access
+requires an exact, case-insensitive match with `ADMIN_EMAIL`; every admin API
+route performs its own authorization check.
+
+## NOWPayments
+
+The default example uses the NOWPayments sandbox API. Checkout is created
+server-side and IPN callbacks are accepted only when their HMAC-SHA512 signature
+is valid. Access is granted only for a final `finished` payment whose USD amount
+matches the stored order:
+
+- Annual: `$20 USD`, extending from the later of today or the current expiry
+- Lifetime: `$30 USD`, upgrading the user's existing license permanently
+
+Failed, expired, partially paid, duplicate, and amount-mismatched callbacks do
+not grant access. Configure the IPN URL as:
+
+```text
+https://your-production-domain.example/api/payments/nowpayments/ipn
+```
+
+## Vercel deployment
+
+1. Import this repository into Vercel.
+2. Set the Vercel Root Directory to `web`.
+3. Add all variables from `web/.env.example` as project environment variables.
+4. Use the production application URL for the Better Auth and public URL values.
+5. Apply `web/drizzle/` to the production Neon branch.
+6. Add the production Google OAuth callback.
+7. Set the GitHub repository variable `LICENSE_API_URL` to the hosted endpoint
+   before publishing a tagged desktop release.
+
+Database, OAuth, encryption, signing, admin, and payment values must remain
+server-only. Never prefix them with `NEXT_PUBLIC_`.
+
+## License behavior
+
+Each key may hold one active device lease. The lease is renewed every 60 seconds
+and expires after 10 minutes without a valid heartbeat. Normal application exit,
+the customer portal, and the admin dashboard can release it immediately.
+
+A second computer receives `DEVICE_IN_USE` while the lease is valid. After a
+stale takeover, the old activation token is rotated and receives
+`SESSION_REPLACED`.
+
+The versioned desktop API is:
+
+```text
+POST /api/v1/license/activate
+POST /api/v1/license/verify
+POST /api/v1/license/heartbeat
+POST /api/v1/license/release
+```
+
+## Verification
+
+Run the full local verification suite:
+
+```powershell
+npm run verify
+npm audit
+npm --prefix web audit
+```
+
+CI separately checks desktop syntax and tests, web linting, type checking, tests,
+builds, migration drift, and credential-like values. Tags matching `v*` produce
+a Windows installer, ZIP, and `SHA256SUMS.txt` GitHub release.
+
+Before making a fork public, review the complete Git history for old credentials
+as well as the current tree.
+
+## Responsible use
+
+Use Chrome Mirror only for browser sessions and websites you are authorized to
+control. Follow website terms, account rules, automation limits, and applicable
+law.
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE).
+Chrome Mirror is available under the [MIT License](LICENSE).

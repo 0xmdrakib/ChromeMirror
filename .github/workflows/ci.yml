@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-secrets.js
+
+  desktop:
+    name: Desktop
+    runs-on: windows-latest
+    env:
+      LICENSE_API_URL: https://example.com/api/v1/license
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:desktop
+      - run: npm test
+      - run: npm run prebuild
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      DATABASE_URL: postgresql://user:password@localhost/chrome_mirror?sslmode=require
+      BETTER_AUTH_SECRET: ci-only-better-auth-secret-value
+      BETTER_AUTH_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+      ADMIN_EMAIL: admin@example.com
+      LICENSE_JWT_SECRET: ci-only-desktop-jwt-secret-value
+      LICENSE_KEY_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      REDEEM_CODE_PEPPER: ci-only-redemption-pepper-value
+      NOWPAYMENTS_API_KEY: ""
+      NOWPAYMENTS_IPN_SECRET: ""
+      NOWPAYMENTS_API_URL: https://api-sandbox.nowpayments.io/v1
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_GITHUB_REPO: https://github.com/0xmdrakib/ChromeMirror
+      NEXT_PUBLIC_DOWNLOAD_URL: https://github.com/0xmdrakib/ChromeMirror/releases/latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run db:generate
+      - name: Verify generated migration is committed
+        working-directory: .
+        run: git diff --exit-code -- web/drizzle

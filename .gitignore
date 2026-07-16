@@ -1,16 +1,18 @@
 node_modules/
 dist/
 .build/
+build-app/
 *.log
 .DS_Store
 
 # Secrets (NEVER commit these)
 .env
-supabase/.env
-admin/.env
+.env.local
+web/.env.local
 
 # Bytecode build artifacts
 *.jsc
 
-# Supabase local
-supabase/.temp/
+# Test and web build output
+coverage/
+web/.next/

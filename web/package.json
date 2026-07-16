@@ -1,0 +1,53 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "better-auth": "^1.6.23",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.3",
+    "lucide-react": "^1.24.0",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "recharts": "^3.9.2",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.6.0",
+    "ws": "^8.21.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@next/env": "^16.2.10",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "esbuild": "0.25.0",
+    "postcss": "8.5.19"
+  }
+}

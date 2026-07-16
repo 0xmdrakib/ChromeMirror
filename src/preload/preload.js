@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // roles
   getRoles: () => ipcRenderer.invoke('roles:get'),
-  setRoles: (leaderId, followerId) => ipcRenderer.invoke('roles:set', leaderId, followerId),
+  setRoles: (leaderId, followerIds, windowLayout) =>
+    ipcRenderer.invoke('roles:set', leaderId, followerIds, windowLayout),
 
   // settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
@@ -23,6 +24,9 @@ contextBridge.exposeInMainWorld('api', {
   startSession: () => ipcRenderer.invoke('session:start'),
   stopSession: () => ipcRenderer.invoke('session:stop'),
   setMirror: (on) => ipcRenderer.invoke('mirror:set', on),
+  focusProfile: (profileId) => ipcRenderer.invoke('session:focus-profile', profileId),
+  retryFollower: (profileId) => ipcRenderer.invoke('session:retry-follower', profileId),
+  setWindowLayout: (layout) => ipcRenderer.invoke('session:layout', layout),
 
   // license
   checkLicense: () => ipcRenderer.invoke('license:check'),

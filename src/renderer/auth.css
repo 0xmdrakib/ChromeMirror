@@ -14,7 +14,7 @@
   max-width: 420px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 8px;
   box-shadow: var(--shadow);
   padding: 36px 32px;
   text-align: center;
@@ -23,9 +23,9 @@
 .auth-brand {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: 8px;
   margin: 0 auto 18px;
-  background: linear-gradient(135deg, var(--accent), #6f3ff5);
+  background: var(--accent);
   display: grid;
   place-items: center;
   color: #fff;
@@ -46,17 +46,17 @@
   line-height: 1.5;
 }
 
-/* License key input — segmented look */
+/* License key input */
 .key-input {
   width: 100%;
   font-family: var(--mono);
   font-size: 17px;
-  letter-spacing: 1.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
   text-align: center;
   padding: 14px 14px;
   border: 1.5px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: 7px;
   background: var(--surface-2);
   color: var(--text);
   transition: border-color .12s, box-shadow .12s;
@@ -68,7 +68,7 @@
 }
 .key-input::placeholder {
   color: var(--faint);
-  letter-spacing: 1px;
+  letter-spacing: 0;
 }
 
 .auth-btn {
@@ -76,7 +76,7 @@
   margin-top: 14px;
   padding: 12px 16px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 7px;
   background: var(--accent);
   color: #fff;
   font-size: 15px;
@@ -85,16 +85,16 @@
   cursor: pointer;
   transition: background .12s, transform .05s;
 }
-.auth-btn:hover:not(:disabled) { background: var(--accent-press); }
+.auth-btn:hover:not(:disabled) { background: var(--accent-hover); }
 .auth-btn:active:not(:disabled) { transform: translateY(1px); }
 .auth-btn:disabled { opacity: .55; cursor: default; }
 
 .auth-error {
   margin-top: 14px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--red) 30%, var(--border));
   color: var(--red);
   font-size: 13px;
   line-height: 1.4;
@@ -112,9 +112,9 @@
 .block-icon {
   width: 64px;
   height: 64px;
-  border-radius: 50%;
+  border-radius: 8px;
   margin: 0 auto 18px;
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
   display: grid;
   place-items: center;
   color: var(--red);
@@ -130,7 +130,7 @@
   background: var(--text);
   color: #fff;
   padding: 10px 18px;
-  border-radius: 999px;
+  border-radius: 7px;
   font-size: 13px;
   box-shadow: var(--shadow);
   animation: auth-toast-in .2s;

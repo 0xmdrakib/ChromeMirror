@@ -12,9 +12,13 @@ const REASONS = {
     title: 'License Expired',
     message: 'This license has expired. Please contact the administrator to renew it.',
   },
-  DEVICE_MISMATCH: {
-    title: 'Device Not Authorized',
-    message: 'This license is bound to a different device. Ask the admin to unbind it first.',
+  DEVICE_IN_USE: {
+    title: 'License In Use',
+    message: 'This license is active on another computer. Release that computer from the web portal first.',
+  },
+  SESSION_REPLACED: {
+    title: 'Session Replaced',
+    message: 'Another computer activated this license. Return to the portal if you need to release it.',
   },
   UNVERIFIED: {
     title: 'Could Not Verify License',
@@ -28,6 +32,10 @@ const REASONS = {
     title: 'License Not Found',
     message: 'This license no longer exists on the server.',
   },
+  INVALID_KEY: {
+    title: 'License Not Found',
+    message: 'This license is no longer available on the hosted service.',
+  },
 };
 
 function applyReason(reason) {
@@ -38,7 +46,7 @@ function applyReason(reason) {
 
 // Ask the main process for the current reason (best effort).
 window.api && window.api.checkLicense && window.api.checkLicense().then((s) => {
-  // The state alone tells us we're blocked; reason may be on a push event.
+  if (s && s.reason) applyReason(s.reason);
 }).catch(() => {});
 
 window.api && window.api.onLicenseBlocked && window.api.onLicenseBlocked((d) => {

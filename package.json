@@ -1,17 +1,24 @@
 {
   "name": "chrome-mirror",
-  "version": "1.0.0",
-  "description": "Mirror mouse, keyboard, and form actions from one Chrome profile to another in real time.",
+  "version": "2.0.0",
+  "description": "Mirror one Chrome profile to up to 24 follower profiles with an optional hosted licensing service.",
   "main": "src/main/main.js",
   "author": "Md. Rakib",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "test": "node test-startpage.js && node test-navsync.js && node test-newtab.js && node test-pairing.js && node test-ctrlt.js && node test-no-refresh-loop.js && node test-iframe.js && node test-modern-selectors.js && node test-spa-nav.js && node test-dual-account-form.js && node test-professional-dual-account-form.js && node test-paste-once.js && node test-captcha-skip.js && node test-submit-flow.js && node test-save-next-order.js",
-    "test:professional-dual-account-form": "node test-professional-dual-account-form.js",
-    "prebuild": "node scripts/inject-env.js && npx electron scripts/compile.js",
+    "lint": "npm run lint:desktop && npm --prefix web run lint",
+    "lint:desktop": "node scripts/check-desktop.js",
+    "typecheck": "npm --prefix web run typecheck",
+    "test": "node --test tests/*.test.js",
+    "test:web": "npm --prefix web test",
+    "test:all": "npm test && npm run test:web",
+    "scan:secrets": "node scripts/check-secrets.js",
+    "prebuild": "npx electron scripts/compile.js",
+    "build:web": "npm --prefix web run build",
     "pack": "npm run prebuild && electron-builder --dir",
-    "dist": "npm run prebuild && electron-builder"
+    "dist": "npm run prebuild && electron-builder",
+    "verify": "npm run scan:secrets && npm run lint && npm run typecheck && npm run test:all && npm run prebuild && npm run build:web"
   },
   "build": {
     "appId": "com.rakib.chromemirror",
@@ -31,7 +38,10 @@
       "main": "build-app/main/main-loader.js"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "zip"
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {
@@ -50,13 +60,16 @@
     }
   },
   "dependencies": {
-    "playwright-core": "^1.60.0",
-    "bytenode": "^1.6.0"
+    "bytenode": "^1.6.0",
+    "playwright-core": "^1.60.0"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
     "electron": "^42.4.0",
     "electron-builder": "^26.15.3",
-    "javascript-obfuscator": "^4.1.1",
-    "@electron/fuses": "^1.8.0"
+    "javascript-obfuscator": "^4.1.1"
+  },
+  "overrides": {
+    "undici": "7.28.0"
   }
 }

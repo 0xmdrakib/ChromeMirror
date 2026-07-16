@@ -52,7 +52,8 @@ const FRIENDLY_ERRORS = {
   SUSPENDED: 'This license is suspended. Contact the administrator.',
   CANCELLED: 'This license has been cancelled and can no longer be used.',
   EXPIRED: 'This license has expired.',
-  DEVICE_MISMATCH: 'This license is already activated on another device. Ask the admin to unbind it first.',
+  DEVICE_IN_USE: 'This license is active on another computer. Release it from the web portal first.',
+  SESSION_REPLACED: 'This computer session was replaced by another activation.',
   NETWORK: 'Could not reach the license server. Check your internet connection and try again.',
 };
 
