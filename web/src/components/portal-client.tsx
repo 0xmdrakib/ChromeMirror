@@ -287,7 +287,7 @@ export function PortalClient({
             </span>
             <b>$20</b>
           </button>
-          <button className="plan-row" onClick={() => checkout("lifetime")} disabled={busy.startsWith("checkout")}>
+          <button className="plan-row featured" onClick={() => checkout("lifetime")} disabled={busy.startsWith("checkout")}>
             <span className="plan-mark lifetime"><Sparkles size={18} /></span>
             <span>
               <strong>Lifetime</strong>
