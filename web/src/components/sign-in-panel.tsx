@@ -26,7 +26,7 @@ export function SignInPanel({ googleConfigured }: { googleConfigured: boolean })
     <main className="sign-in-page">
       <section className="sign-in-panel">
         <div className="sign-in-brand">
-          <Image src="/brand-icon.png" alt="" width={46} height={46} priority />
+          <Image src="/brand-icon.png" alt="Chrome Mirror" width={46} height={46} priority />
           <span>
             <strong>Chrome Mirror</strong>
             <small>Hosted access console</small>

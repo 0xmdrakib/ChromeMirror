@@ -38,7 +38,7 @@ export function AppShell({ user, isAdmin, children }: Props) {
       <aside className="portal-sidebar">
         <Link className="portal-brand" href="/dashboard" aria-label="Chrome Mirror dashboard">
           <span className="portal-logo">
-            <Image src="/brand-icon.png" alt="" width={34} height={34} priority />
+            <Image src="/brand-icon.png" alt="Chrome Mirror" width={34} height={34} priority />
           </span>
           <span>
             <strong>Chrome Mirror</strong>

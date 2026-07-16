@@ -18,6 +18,11 @@ export const metadata: Metadata = {
     template: "%s | Chrome Mirror",
   },
   description: "Chrome Mirror hosted access, licenses, devices, and billing.",
+  icons: {
+    icon: { url: "/brand-icon.png", type: "image/png", sizes: "256x256" },
+    shortcut: "/brand-icon.png",
+    apple: "/brand-icon.png",
+  },
 };
 
 export default function RootLayout({
