@@ -4,6 +4,7 @@ import Image from "next/image";
 import { LoaderCircle, LogIn } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SignInPanel({ googleConfigured }: { googleConfigured: boolean }) {
@@ -52,10 +53,11 @@ export function SignInPanel({ googleConfigured }: { googleConfigured: boolean })
           <p className="inline-alert">Google OAuth is awaiting production configuration.</p>
         ) : null}
         {error ? <p className="inline-alert error">{error}</p> : null}
-        <footer>
+        <footer className="sign-in-feature-footer">
           <span>One active computer per license</span>
           <span>Up to 25 Chrome profiles</span>
         </footer>
+        <SiteFooter className="sign-in-site-footer" />
       </section>
       <aside className="sign-in-aside" aria-label="Chrome Mirror product preview">
         <div className="preview-window">

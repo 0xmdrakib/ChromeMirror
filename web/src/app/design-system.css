@@ -313,7 +313,7 @@ select:focus-visible {
   font-size: 13px;
 }
 
-.sign-in-panel footer {
+.sign-in-feature-footer {
   width: min(100%, 450px);
   margin-top: 32px;
   padding-top: 18px;
@@ -428,6 +428,12 @@ select:focus-visible {
 .portal-shell {
   grid-template-columns: 224px minmax(0, 1fr);
   background: var(--bg);
+}
+
+.portal-main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .portal-sidebar {
@@ -551,7 +557,30 @@ select:focus-visible {
 }
 
 .portal-content {
+  flex: 1;
   padding: 48px clamp(24px, 4vw, 56px) 72px;
+}
+
+.site-footer {
+  padding: 20px clamp(24px, 4vw, 56px) 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.site-footer span {
+  margin: 0 4px;
+}
+
+.sign-in-site-footer {
+  position: absolute;
+  right: clamp(34px, 6vw, 86px);
+  bottom: 24px;
+  left: clamp(34px, 6vw, 86px);
+  width: auto;
+  padding: 18px 0 0;
 }
 
 .portal-stack,
@@ -1162,6 +1191,10 @@ select:focus-visible {
     display: block;
   }
 
+  .portal-main {
+    min-height: calc(100svh - 64px);
+  }
+
   .portal-sidebar {
     position: sticky;
     z-index: 30;
@@ -1262,9 +1295,18 @@ select:focus-visible {
     font-size: 14px;
   }
 
-  .sign-in-panel footer {
+  .sign-in-feature-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .sign-in-site-footer {
+    position: static;
+    width: 100%;
+    margin-top: 24px;
+    padding-top: 20px;
+    align-items: center;
+    text-align: center;
   }
 
   .sign-in-aside {
@@ -1330,6 +1372,10 @@ select:focus-visible {
 
   .portal-content {
     padding: 26px 12px 48px;
+  }
+
+  .site-footer {
+    padding: 18px 16px 22px;
   }
 
   .page-heading h1 {

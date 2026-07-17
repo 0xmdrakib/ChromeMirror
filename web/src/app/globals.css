@@ -425,7 +425,7 @@ html[data-theme="dark"] .theme-icon-to-light {
   color: var(--red);
 }
 
-.sign-in-panel footer {
+.sign-in-feature-footer {
   width: min(100%, 430px);
   margin-top: 26px;
   padding-top: 16px;
@@ -1860,7 +1860,7 @@ button.table-row:hover,
     margin-top: 28px;
   }
 
-  .sign-in-panel footer {
+  .sign-in-feature-footer {
     margin-top: auto;
     padding-top: 28px;
   }

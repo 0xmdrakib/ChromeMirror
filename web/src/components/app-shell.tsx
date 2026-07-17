@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { SiteFooter } from "@/components/site-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 type Props = {
@@ -121,6 +122,7 @@ export function AppShell({ user, isAdmin, children }: Props) {
           </div>
         </header>
         <main className="portal-content">{children}</main>
+        <SiteFooter />
       </div>
     </div>
   );
