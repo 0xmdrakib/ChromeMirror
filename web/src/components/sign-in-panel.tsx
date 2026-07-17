@@ -57,7 +57,6 @@ export function SignInPanel({ googleConfigured }: { googleConfigured: boolean })
           <span>One active computer per license</span>
           <span>Up to 25 Chrome profiles</span>
         </footer>
-        <SiteFooter className="sign-in-site-footer" />
       </section>
       <aside className="sign-in-aside" aria-label="Chrome Mirror product preview">
         <div className="preview-window">
@@ -95,6 +94,7 @@ export function SignInPanel({ googleConfigured }: { googleConfigured: boolean })
           </div>
         </div>
       </aside>
+      <SiteFooter className="sign-in-site-footer" />
     </main>
   );
 }

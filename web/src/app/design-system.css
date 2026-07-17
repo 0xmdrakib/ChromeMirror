@@ -230,11 +230,14 @@ select:focus-visible {
 /* Sign in */
 
 .sign-in-page {
+  position: relative;
   grid-template-columns: minmax(420px, 0.82fr) minmax(560px, 1.18fr);
   background: var(--bg);
 }
 
 .sign-in-panel {
+  grid-column: 1;
+  grid-row: 1;
   padding: 56px clamp(40px, 6vw, 92px);
   border-right: 1px solid var(--line);
   background: var(--bg);
@@ -322,6 +325,8 @@ select:focus-visible {
 }
 
 .sign-in-aside {
+  grid-column: 2;
+  grid-row: 1;
   padding: 8vh 5vw;
   background: var(--surface-2);
 }
@@ -431,7 +436,7 @@ select:focus-visible {
 }
 
 .portal-main {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -575,11 +580,12 @@ select:focus-visible {
 }
 
 .sign-in-site-footer {
-  position: absolute;
-  right: clamp(34px, 6vw, 86px);
-  bottom: 24px;
-  left: clamp(34px, 6vw, 86px);
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
   width: auto;
+  margin: 0 clamp(40px, 6vw, 92px) 24px;
   padding: 18px 0 0;
 }
 
@@ -1169,6 +1175,8 @@ select:focus-visible {
   }
 
   .sign-in-panel {
+    grid-column: 1;
+    grid-row: 1;
     min-height: auto;
     padding: 44px 32px 48px;
     border-right: 0;
@@ -1183,8 +1191,18 @@ select:focus-visible {
   }
 
   .sign-in-aside {
+    grid-column: 1;
+    grid-row: 2;
     min-height: 520px;
     padding: 48px 28px;
+  }
+
+  .sign-in-site-footer {
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+    margin: 0;
+    padding: 20px 24px calc(24px + env(safe-area-inset-bottom));
   }
 
   .portal-shell {
@@ -1192,7 +1210,7 @@ select:focus-visible {
   }
 
   .portal-main {
-    min-height: calc(100svh - 64px);
+    min-height: calc(100dvh - 64px);
   }
 
   .portal-sidebar {
@@ -1301,11 +1319,9 @@ select:focus-visible {
   }
 
   .sign-in-site-footer {
-    position: static;
     width: 100%;
-    margin-top: 24px;
-    padding-top: 20px;
-    align-items: center;
+    margin: 0;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom));
     text-align: center;
   }
 
@@ -1375,7 +1391,11 @@ select:focus-visible {
   }
 
   .site-footer {
-    padding: 18px 16px 22px;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom));
+  }
+
+  .portal-main {
+    min-height: calc(100dvh - 62px);
   }
 
   .page-heading h1 {
