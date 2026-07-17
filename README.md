@@ -31,7 +31,7 @@ source.
 - `$20 USD` annual access for 365 days
 - `$30 USD` lifetime upgrade
 - Single-use annual and lifetime access codes
-- NOWPayments hosted invoices and signed, idempotent IPN processing
+- Embedded USDT/USDC checkout with signed, idempotent IPN processing
 - Admin-only users, licenses, payments, devices, revenue, codes, and audit views
 - Admin access restricted to the normalized `ADMIN_EMAIL` value
 
@@ -158,19 +158,31 @@ route performs its own authorization check.
 ## NOWPayments
 
 The default example uses the NOWPayments sandbox API. Checkout is created
-server-side and IPN callbacks are accepted only when their HMAC-SHA512 signature
-is valid. Access is granted only for a final `finished` payment whose USD amount
-matches the stored order:
+server-side with `POST /payment`; the portal displays only the USDT and USDC
+networks currently enabled for the merchant account. The payment address,
+exact amount, QR code, and status remain inside the portal.
+
+IPN callbacks are accepted only when their HMAC-SHA512 signature is valid.
+The browser also polls the provider through an authenticated, ownership-checked
+endpoint, and administrators can reconcile a payment manually. Access is
+granted only for a final `finished` payment whose order ID, provider payment ID,
+USD price, and selected crypto ticker match the stored order:
 
 - Annual: `$20 USD`, extending from the later of today or the current expiry
 - Lifetime: `$30 USD`, upgrading the user's existing license permanently
 
-Failed, expired, partially paid, duplicate, and amount-mismatched callbacks do
-not grant access. Configure the IPN URL as:
+Failed, expired, refunded, partially paid, duplicate, and mismatched callbacks
+do not grant access.
+
+Each payment is created with Chrome Mirror's own callback URL:
 
 ```text
 https://your-production-domain.example/api/payments/nowpayments/ipn
 ```
+
+This project does not require the account-level NOWPayments webhook setting.
+The existing account webhook can continue serving another project. Authenticated
+provider polling and admin reconciliation remain independent recovery paths.
 
 ## Vercel deployment
 
@@ -182,6 +194,7 @@ https://your-production-domain.example/api/payments/nowpayments/ipn
 6. Add the production Google OAuth callback.
 7. Set the GitHub repository variable `LICENSE_API_URL` to the hosted endpoint
    before publishing a tagged desktop release.
+8. Apply every committed Drizzle migration before enabling checkout.
 
 Database, OAuth, encryption, signing, admin, and payment values must remain
 server-only. Never prefix them with `NEXT_PUBLIC_`.

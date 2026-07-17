@@ -19,6 +19,12 @@ export default async function DashboardPage() {
         plan: schema.payments.plan,
         amountUsdCents: schema.payments.amountUsdCents,
         status: schema.payments.status,
+        payCurrency: schema.payments.payCurrency,
+        payAmount: schema.payments.payAmount,
+        payAddress: schema.payments.payAddress,
+        payinExtraId: schema.payments.payinExtraId,
+        network: schema.payments.network,
+        paymentExpiresAt: schema.payments.paymentExpiresAt,
         createdAt: schema.payments.createdAt,
       })
       .from(schema.payments)
@@ -40,6 +46,8 @@ export default async function DashboardPage() {
         } : null}
         payments={paymentRows.map((payment) => ({
           ...payment,
+          expiresAt: payment.paymentExpiresAt?.toISOString() || null,
+          paymentExpiresAt: undefined,
           createdAt: payment.createdAt.toISOString(),
         }))}
         downloadUrl={env.NEXT_PUBLIC_DOWNLOAD_URL}

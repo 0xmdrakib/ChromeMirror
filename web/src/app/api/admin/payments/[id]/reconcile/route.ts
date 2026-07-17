@@ -9,7 +9,7 @@ export async function POST(
   try {
     await requireApiAdmin(request);
     const { id } = await context.params;
-    return Response.json({ ok: true, ...(await reconcilePayment(id)) });
+    return Response.json({ ok: true, ...(await reconcilePayment(id, { force: true })) });
   } catch (error) {
     return apiError(error);
   }

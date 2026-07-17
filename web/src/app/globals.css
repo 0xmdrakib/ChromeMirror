@@ -1093,7 +1093,7 @@ html[data-theme="dark"] .theme-icon-to-light {
 
 .portal-payments .table-head,
 .portal-payments .table-row {
-  grid-template-columns: 1fr 0.8fr 0.7fr 0.8fr;
+  grid-template-columns: 1fr 0.8fr 0.7fr 0.8fr 0.6fr;
 }
 
 .table-head {
@@ -1972,6 +1972,91 @@ button.table-row:hover,
 
   .code-controls .button {
     grid-column: 1 / -1;
+  }
+
+  .portal-payments {
+    overflow: hidden;
+  }
+
+  .portal-payments .table-head {
+    display: none;
+  }
+
+  .portal-payments .table-row {
+    min-height: 0;
+    padding: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "date status"
+      "plan action"
+      "amount amount";
+    gap: 8px 12px;
+  }
+
+  .portal-payments .table-row > span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .portal-payments .table-row > span::before {
+    color: var(--muted);
+    font-size: 0.59rem;
+    font-weight: 720;
+    text-transform: uppercase;
+  }
+
+  .portal-payments .table-row > span:nth-child(1) {
+    grid-area: date;
+  }
+
+  .portal-payments .table-row > span:nth-child(1)::before {
+    content: "Date";
+  }
+
+  .portal-payments .table-row > span:nth-child(2) {
+    grid-area: plan;
+  }
+
+  .portal-payments .table-row > span:nth-child(2)::before {
+    content: "Plan";
+  }
+
+  .portal-payments .table-row > span:nth-child(3) {
+    grid-area: amount;
+  }
+
+  .portal-payments .table-row > span:nth-child(3)::before {
+    content: "Amount";
+  }
+
+  .portal-payments .table-row > span:nth-child(4) {
+    grid-area: status;
+    align-items: flex-end;
+  }
+
+  .portal-payments .table-row > span:nth-child(4)::before {
+    content: "Status";
+  }
+
+  .portal-payments .table-row > span:nth-child(5) {
+    grid-area: action;
+    align-items: flex-end;
+  }
+
+  .portal-payments .table-row > span:nth-child(5)::before {
+    content: "Action";
+  }
+
+  .portal-payments .table-row > span:nth-child(5) .link-button {
+    min-height: 24px;
+  }
+
+  .portal-payments .table-empty {
+    min-height: 86px;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .license-drawer > footer {

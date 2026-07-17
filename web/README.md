@@ -5,6 +5,8 @@ admin dashboard, Better Auth Google login, Neon-backed licensing API, redemption
 codes, and NOWPayments checkout.
 
 Vercel should import the repository with `web/` selected as the project root.
+NOWPayments payments use this deployment's
+`/api/payments/nowpayments/ipn` endpoint directly.
 The production function region is configured as `iad1` in `vercel.json`.
 
 ## Local setup

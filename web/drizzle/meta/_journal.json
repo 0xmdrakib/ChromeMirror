@@ -8,6 +8,13 @@
       "when": 1784184276275,
       "tag": "0000_bizarre_ted_forrester",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784280203532,
+      "tag": "0001_talented_namor",
+      "breakpoints": true
     }
   ]
 }
