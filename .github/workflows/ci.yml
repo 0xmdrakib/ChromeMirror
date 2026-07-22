@@ -18,8 +18,8 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node scripts/check-secrets.js
@@ -30,8 +30,8 @@ jobs:
     env:
       LICENSE_API_URL: https://example.com/api/v1/license
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -63,8 +63,8 @@ jobs:
       NEXT_PUBLIC_GITHUB_REPO: https://github.com/0xmdrakib/ChromeMirror
       NEXT_PUBLIC_DOWNLOAD_URL: https://github.com/0xmdrakib/ChromeMirror/releases/latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
