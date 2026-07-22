@@ -31,29 +31,6 @@ Download the Windows installer from the [Releases page](https://github.com/0xmdr
 
 Purchase and manage your licence from the [Chrome Mirror website](https://chromemirror.rakibhq.xyz/).
 
-## Development
-
-Install dependencies and start the desktop app:
-
-```powershell
-npm ci
-npm start
-```
-
-Run the complete verification suite:
-
-```powershell
-npm run verify
-```
-
-Build the Windows installer:
-
-```powershell
-npm run dist
-```
-
-The hosted website and licence API are located in [`web/`](web/). Copy the relevant `.env.example` file before local development; never commit real credentials.
-
 ## Responsible use
 
 Use Chrome Mirror only with browser profiles and websites you are authorized to control. Follow website terms, automation limits, and applicable law.
