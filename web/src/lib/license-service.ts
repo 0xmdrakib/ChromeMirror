@@ -10,7 +10,7 @@ import {
   licenseKeyHash,
   maskLicenseKey,
 } from "@/lib/crypto";
-import { signDesktopToken, verifyDesktopToken } from "@/lib/license-token";
+import { signDesktopToken, verifyDesktopResumeToken, verifyDesktopToken } from "@/lib/license-token";
 import { ApiError } from "@/lib/utils";
 
 export const LEASE_DURATION_MS = 10 * 60 * 1000;
@@ -355,6 +355,83 @@ export async function renewDesktopSession(
   return {
     token: await signDesktopToken(claims),
     license: publicLicense(result, leaseExpiresAt),
+  };
+}
+
+export async function resumeDesktopSession(input: {
+  token: string;
+  deviceId: string;
+  machineInfo?: Record<string, unknown>;
+  appVersion?: string;
+}) {
+  const claims = await verifyDesktopResumeToken(input.token);
+  if (claims.deviceId !== input.deviceId) {
+    throw new ApiError("DEVICE_MISMATCH", "Activation belongs to another computer.", 409);
+  }
+  const now = new Date();
+  const leaseExpiresAt = new Date(now.getTime() + LEASE_DURATION_MS);
+
+  const license = await db.transaction(async (tx) => {
+    await tx.execute(sql`select id from licenses where id = ${claims.licenseId} for update`);
+    const [currentLicense] = await tx
+      .select()
+      .from(schema.licenses)
+      .where(eq(schema.licenses.id, claims.licenseId))
+      .limit(1);
+    if (!currentLicense) throw new ApiError("INVALID_KEY", "License no longer exists.", 404);
+    const stateError = licenseError(currentLicense, now);
+    if (stateError) throw stateError;
+    if (currentLicense.tokenVersion !== claims.tokenVersion) {
+      throw new ApiError("SESSION_REPLACED", "This activation session was replaced.", 409);
+    }
+
+    const [lease] = await tx
+      .select()
+      .from(schema.deviceLeases)
+      .where(eq(schema.deviceLeases.licenseId, currentLicense.id))
+      .limit(1);
+    if (
+      !lease
+      || lease.sessionId !== claims.sessionId
+      || lease.deviceId !== claims.deviceId
+    ) {
+      throw new ApiError("SESSION_REPLACED", "This activation session was replaced.", 409);
+    }
+
+    await tx
+      .update(schema.deviceLeases)
+      .set({
+        leaseExpiresAt,
+        lastHeartbeatAt: now,
+        machineInfo: input.machineInfo ?? lease.machineInfo,
+        appVersion: input.appVersion ?? lease.appVersion,
+        updatedAt: now,
+      })
+      .where(eq(schema.deviceLeases.licenseId, currentLicense.id));
+    await tx
+      .update(schema.devices)
+      .set({
+        lastSeenAt: now,
+        machineInfo: input.machineInfo ?? lease.machineInfo,
+        appVersion: input.appVersion ?? lease.appVersion,
+      })
+      .where(and(
+        eq(schema.devices.licenseId, currentLicense.id),
+        eq(schema.devices.deviceId, claims.deviceId),
+      ));
+    await tx.insert(schema.licenseEvents).values({
+      licenseId: currentLicense.id,
+      event: "device.session_resumed",
+      actor: "desktop",
+      detail: { deviceId: claims.deviceId, appVersion: input.appVersion },
+    });
+    return currentLicense;
+  });
+
+  return {
+    valid: true,
+    token: await signDesktopToken(claims),
+    license: publicLicense(license, leaseExpiresAt),
   };
 }
 

@@ -1,4 +1,5 @@
 'use strict';
+
 const REASONS = {
   SUSPENDED: {
     title: 'License Suspended',
@@ -38,31 +39,97 @@ const REASONS = {
   },
 };
 
+const retryBtn = document.getElementById('retryBtn');
+const retryStatus = document.getElementById('retryStatus');
+let retrying = false;
+
 function applyReason(reason) {
-  const r = REASONS[reason] || REASONS.UNVERIFIED;
-  document.getElementById('title').textContent = r.title;
-  document.getElementById('message').textContent = r.message;
+  const value = REASONS[reason] || REASONS.UNVERIFIED;
+  document.getElementById('title').textContent = value.title;
+  document.getElementById('message').textContent = value.message;
 }
 
-// Ask the main process for the current reason (best effort).
-window.api && window.api.checkLicense && window.api.checkLicense().then((s) => {
-  if (s && s.reason) applyReason(s.reason);
-}).catch(() => {});
+function setRetryStatus(message, state) {
+  retryStatus.textContent = message || '';
+  if (state) retryStatus.dataset.state = state;
+  else delete retryStatus.dataset.state;
+}
 
-window.api && window.api.onLicenseBlocked && window.api.onLicenseBlocked((d) => {
-  if (d && d.reason) applyReason(d.reason);
-});
+function isConnectivityReason(reason) {
+  return [
+    'UNVERIFIED',
+    'NETWORK',
+    'ABORT_ERR',
+    'ENOTFOUND',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ETIMEDOUT',
+  ].includes(reason);
+}
 
-document.getElementById('retryBtn').addEventListener('click', async function () {
-  this.disabled = true;
-  this.textContent = 'Checking…';
+if (window.api && window.api.checkLicense) {
+  window.api.checkLicense().then((status) => {
+    if (status && status.reason) applyReason(status.reason);
+  }).catch((error) => {
+    console.error('[license] could not read the current license state:', error);
+  });
+}
+
+if (window.api && window.api.onLicenseBlocked) {
+  window.api.onLicenseBlocked((data) => {
+    if (data && data.reason) applyReason(data.reason);
+  });
+}
+
+retryBtn.addEventListener('click', async () => {
+  if (retrying) return;
+  retrying = true;
+  retryBtn.disabled = true;
+  retryBtn.textContent = 'Checking...';
+  setRetryStatus('Contacting the license server...', 'checking');
+
   try {
-    if (window.api && window.api.retryLicense) {
-      await window.api.retryLicense();
-    } else {
-      window.location.reload();
+    if (!window.api || !window.api.retryLicense) {
+      throw new Error('License verification is unavailable. Please restart Chrome Mirror.');
     }
-  } catch (_) {}
-  this.disabled = false;
-  this.textContent = 'Retry';
+
+    const result = await window.api.retryLicense();
+    if (!result || !result.state) {
+      throw new Error('The license server returned an invalid response. Please try again.');
+    }
+
+    if (result.state === 'active') {
+      setRetryStatus('License verified. Opening Chrome Mirror...', 'success');
+      return;
+    }
+
+    if (result.state === 'needs_activation') {
+      setRetryStatus('No active license was found. Opening activation...', 'success');
+      return;
+    }
+
+    if (result.reason) applyReason(result.reason);
+    setRetryStatus(
+      isConnectivityReason(result.reason)
+        ? 'Still unable to reach the license server. Check your connection and retry.'
+        : 'This license is still locked. Resolve the issue above, then retry.',
+      'error'
+    );
+  } catch (error) {
+    console.error('[license] retry failed:', error);
+    setRetryStatus(
+      error && error.message
+        ? error.message
+        : 'Could not verify the license. Check your connection and try again.',
+      'error'
+    );
+  } finally {
+    // Successful states are about to navigate. Keep the button disabled during
+    // that brief transition so a second request cannot race the first.
+    if (retryStatus.dataset.state !== 'success') {
+      retrying = false;
+      retryBtn.disabled = false;
+      retryBtn.textContent = 'Retry';
+    }
+  }
 });

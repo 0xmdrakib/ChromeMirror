@@ -136,8 +136,6 @@ body {
 .license-mini strong { font-size: 11.5px; }
 .license-mini small { margin-top: 1px; color: var(--sidebar-muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .license-dot { width: 8px; height: 8px; border-radius: 50%; background: #4dd691; box-shadow: 0 0 0 3px rgba(77,214,145,.12); }
-.version { color: #667587; font-size: 10px; }
-
 .workspace { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .topbar {
   height: 72px;
@@ -302,11 +300,12 @@ select:disabled { opacity: .55; cursor: not-allowed; }
 }
 .health-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .health-dot.ready { background: var(--green); }
-.health-dot.launching { background: var(--amber); animation: pulse 1.1s infinite; }
+.health-dot.launching, .health-dot.recovering { background: var(--amber); animation: pulse 1.1s infinite; }
 .health-dot.error, .health-dot.closed, .health-dot.degraded { background: var(--red); }
 @keyframes pulse { 50% { opacity: .35; } }
 .state-label { min-width: 50px; color: var(--muted); text-align: right; text-transform: capitalize; font-size: 9.5px; font-weight: 700; }
 .state-label.ready { color: var(--green); }
+.state-label.recovering { color: var(--amber); }
 .state-label.error, .state-label.closed, .state-label.degraded { color: var(--red); }
 
 .empty-state {
@@ -356,6 +355,9 @@ select:disabled { opacity: .55; cursor: not-allowed; }
 .switch.on { background: var(--green); border-color: var(--green); }
 .switch.on .knob { transform: translateX(20px); }
 .switch:disabled { opacity: .45; cursor: not-allowed; }
+.pause-resume .resume-icon { display: none; }
+.pause-resume.is-paused .pause-icon { display: none; }
+.pause-resume.is-paused .resume-icon { display: block; }
 
 .btn, .icon-btn {
   border: 1px solid var(--border-strong);
@@ -368,9 +370,15 @@ select:disabled { opacity: .55; cursor: not-allowed; }
   height: 38px;
   min-width: 94px;
   padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border-radius: 7px;
   font-size: 11.5px;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 .btn .lucide { width: 15px; height: 15px; }
 .btn:hover { background: var(--surface-2); }

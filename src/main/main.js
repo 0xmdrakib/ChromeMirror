@@ -6,12 +6,22 @@ const fs = require('fs');
 const { ProfileStore } = require('./profiles');
 const { MirrorEngine } = require('./mirror-engine');
 const { LicenseClient, STATE } = require('./license-client');
+const { stopLicenseForShutdown } = require('./license-lifecycle');
+const { licensePageForState, shouldNavigateAfterRetry } = require('./license-routing');
 const { createWindowPlan } = require('./window-layout');
+const { DiagnosticsLog } = require('./diagnostics');
 
 let win = null;
 let store = null;
 let engine = null;
 let license = null;
+let licenseNavigationTimer = null;
+let diagnostics = null;
+
+// Keep manual development and UI verification isolated from installed data.
+if (!app.isPackaged && process.env.CM_USER_DATA_DIR) {
+  app.setPath('userData', path.resolve(process.env.CM_USER_DATA_DIR));
+}
 
 // ---------------------------------------------------------------------------
 // Anti-debug / hardening (production only). Applied as early as possible.
@@ -77,7 +87,7 @@ function createWindow(initialPage = 'index.html') {
   win.webContents.on('render-process-gone', (_e, d) => console.log('[render-gone]', JSON.stringify(d)));
 
   // One-shot layout diagnostic: run `CM_DIAG=1 npm start`.
-  if (process.env.CM_DIAG) {
+  if (!app.isPackaged && process.env.CM_DIAG) {
     win.webContents.once('did-finish-load', async () => {
       const js = `(function(){
         var ids=['viewTitle','viewSubtitle','selectedCount','leaderSel','followerPicker','startBtn','stopBtn','leaderAvatar','mirrorLabel','layoutSelect','profileList','log','settingsForm'];
@@ -120,15 +130,7 @@ function send(channel, data) {
  */
 async function runLicenseGate() {
   const result = await license.checkAtBoot();
-  
-  let initialPage = 'activate.html';
-  if (result.state === STATE.ACTIVE) {
-    initialPage = 'index.html';
-  } else if (result.state === STATE.BLOCKED) {
-    initialPage = 'blocked.html';
-  }
-
-  createWindow(initialPage);
+  createWindow(licensePageForState(result.state));
 
   if (result.state === STATE.ACTIVE) {
     license.startHeartbeat();
@@ -139,30 +141,53 @@ async function runLicenseGate() {
     if (engine) { try { engine.stop(); } catch (_) {} }
     license.stopHeartbeat();
     if (win && !win.isDestroyed()) {
-      win.loadFile(path.join(__dirname, '..', 'renderer', 'blocked.html'))
+      win.loadFile(path.join(__dirname, '..', 'renderer', licensePageForState(STATE.BLOCKED)))
         .then(() => send('license:blocked', { reason }))
-        .catch(() => {});
+        .catch((error) => {
+          console.error('[license] could not open the locked screen:', error.message);
+        });
     }
   });
 }
 
 async function applyLicenseState(result) {
   if (!win || win.isDestroyed()) return;
+  const page = licensePageForState(result.state);
+
+  if (result.state !== STATE.ACTIVE) {
+    license.stopHeartbeat();
+  }
+
+  await win.loadFile(path.join(__dirname, '..', 'renderer', page));
+
   if (result.state === STATE.ACTIVE) {
-    await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
     license.startHeartbeat();
-  } else if (result.state === STATE.NEEDS_ACTIVATION) {
-    await win.loadFile(path.join(__dirname, '..', 'renderer', 'activate.html'));
-  } else {
-    await win.loadFile(path.join(__dirname, '..', 'renderer', 'blocked.html'));
   }
 }
 
+function scheduleLicenseState(result, delayMs = 300) {
+  if (licenseNavigationTimer) clearTimeout(licenseNavigationTimer);
+  licenseNavigationTimer = setTimeout(() => {
+    licenseNavigationTimer = null;
+    applyLicenseState(result).catch((error) => {
+      console.error('[license] could not change the license screen:', error.message);
+    });
+  }, delayMs);
+}
+
 app.whenReady().then(async () => {
+  diagnostics = new DiagnosticsLog(app.getPath('userData'));
+  diagnostics.write('info', 'Chrome Mirror started', { appVersion: app.getVersion(), packaged: app.isPackaged });
   store = new ProfileStore(app.getPath('userData'));
   engine = new MirrorEngine({
-    onStatus: (s) => send('status', s),
-    onLog: (l) => send('log', Object.assign({ t: Date.now() }, l)),
+    onStatus: (s) => {
+      diagnostics.status(s);
+      send('status', s);
+    },
+    onLog: (l) => {
+      diagnostics.write(l.level, l.text);
+      send('log', Object.assign({ t: Date.now() }, l));
+    },
   });
   license = new LicenseClient();
 
@@ -188,11 +213,20 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', async () => {
+  if (licenseNavigationTimer) clearTimeout(licenseNavigationTimer);
+  licenseNavigationTimer = null;
   try {
     if (engine) await engine.stop();
-    if (license) await license.release();
+    // A normal app/Windows shutdown must keep this computer activated.
+    // Device release is an explicit portal/admin action, not an exit action.
+    stopLicenseForShutdown(license);
   } catch (_) {}
+  if (diagnostics) diagnostics.flushSync();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  if (diagnostics) diagnostics.flushSync();
 });
 
 /* ---------------------------------- IPC ---------------------------------- */
@@ -251,10 +285,7 @@ ipcMain.handle('session:stop', async () => {
   return engine.status();
 });
 
-ipcMain.handle('mirror:set', (_e, on) => {
-  engine.setMirroring(on);
-  return engine.status();
-});
+ipcMain.handle('mirror:set', (_e, on) => engine.setMirroring(on));
 
 ipcMain.handle('session:focus-profile', (_e, profileId) => engine.focusProfile(profileId));
 ipcMain.handle('session:retry-follower', (_e, profileId) => engine.retryFollower(profileId));
@@ -277,7 +308,11 @@ ipcMain.handle('license:check', () => {
 // Re-check state online (e.g. from Retry button on blocked screen)
 ipcMain.handle('license:retry', async () => {
   const result = await license.checkAtBoot();
-  await applyLicenseState(result);
+  // Keep a repeatedly blocked renderer alive so it can receive this result
+  // and show useful feedback. Successful states navigate after the reply.
+  if (shouldNavigateAfterRetry(result.state)) {
+    scheduleLicenseState(result);
+  }
   return result;
 });
 
@@ -285,8 +320,9 @@ ipcMain.handle('license:retry', async () => {
 ipcMain.handle('license:activate', async (_e, key) => {
   const r = await license.activate(key);
   if (r.ok) {
-    // Swap to the main app + begin heartbeats.
-    await applyLicenseState({ state: STATE.ACTIVE });
+    // Let the renderer receive the successful IPC response before replacing
+    // the page that made the request.
+    scheduleLicenseState({ state: STATE.ACTIVE }, 450);
   }
   return r;
 });

@@ -6,7 +6,7 @@
  * if none match and coordinate-fallback is enabled, act by viewport fraction.
  */
 
-const ACTION_TIMEOUT = 3500;
+const ACTION_TIMEOUT = 1800;
 
 async function innerSize(page) {
   try {
@@ -23,19 +23,31 @@ function ownerPage(target) {
 }
 
 async function clickByFraction(target, frac) {
-  const s = await innerSize(target);
   const page = ownerPage(target);
+  const xFraction = Number(frac && frac.x);
+  const yFraction = Number(frac && frac.y);
+  if (!Number.isFinite(xFraction) || !Number.isFinite(yFraction)) return false;
+  const x = Math.max(0, Math.min(1, xFraction));
+  const y = Math.max(0, Math.min(1, yFraction));
+
   if (target && typeof target.frameElement === 'function') {
     try {
       const owner = await target.frameElement();
       const box = await owner.boundingBox();
-      if (box) {
-        await page.mouse.click(box.x + frac.x * s.w, box.y + frac.y * s.h);
-        return;
-      }
-    } catch (_) {}
+      // A hidden/detached child frame has no usable box. Never fall through to
+      // page-relative coordinates: that turns a child-frame event into an
+      // unrelated trusted click on the follower's top-level document.
+      if (!box || !(box.width > 0) || !(box.height > 0)) return false;
+      await page.mouse.click(box.x + x * box.width, box.y + y * box.height);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
-  await page.mouse.click(frac.x * s.w, frac.y * s.h);
+
+  const s = await innerSize(target);
+  await page.mouse.click(x * s.w, y * s.h);
+  return true;
 }
 
 function diffEdit(before, after) {
@@ -144,6 +156,73 @@ async function applyTextOperation(target, loc, ev) {
   return { ok: false, reason: 'not-applied' };
 }
 
+// Text inputs are the hottest replay path. Resolve the CSS candidates, read
+// the follower value, map the leader delta, focus, mutate and dispatch in one
+// renderer round-trip. This preserves the same delta semantics as the locator
+// fallback below while avoiding four Playwright protocol calls per character.
+async function applyTextOperationFast(target, ev) {
+  if (!ev || ev.contentEditable || !Array.isArray(ev.selectors) || !ev.selectors.length) {
+    return null;
+  }
+  const before = ev.valueBefore != null ? String(ev.valueBefore) : '';
+  const value = ev.value != null ? String(ev.value) : '';
+  const edit = diffEdit(before, value);
+  return target.evaluate(
+    (payload) => {
+      var el = null;
+      for (var i = 0; i < payload.selectors.length; i++) {
+        try {
+          el = document.querySelector(payload.selectors[i]);
+          if (el) break;
+        } catch (_) {}
+      }
+      if (!el) return { found: false };
+      if (typeof el.value !== 'string') return { found: true, eligible: false };
+
+      var current = el.value;
+      var edit = payload.edit;
+      var sourceTailStart = edit.start + edit.deleteCount;
+      var selection = payload.selectionBefore;
+      var selectionAtEnd = selection
+        && selection.start === payload.beforeLength
+        && selection.end === payload.beforeLength;
+      if (sourceTailStart === payload.beforeLength || selectionAtEnd) {
+        edit.start = Math.max(0, current.length - edit.deleteCount);
+        edit.deleteCount = Math.min(edit.deleteCount, current.length);
+      } else if (edit.start === 0) {
+        edit.start = 0;
+        edit.deleteCount = Math.min(edit.deleteCount, current.length);
+      } else {
+        edit.start = Math.min(edit.start, current.length);
+        edit.deleteCount = Math.min(edit.deleteCount, Math.max(0, current.length - edit.start));
+      }
+
+      var start = Math.min(Math.max(edit.start, 0), current.length);
+      var end = Math.min(Math.max(start + edit.deleteCount, start), current.length);
+      try { el.focus({ preventScroll: true }); } catch (_) { try { el.focus(); } catch (_) {} }
+      el.value = current.slice(0, start) + edit.insertText + current.slice(end);
+      var caret = start + edit.insertText.length;
+      if (typeof el.setSelectionRange === 'function') {
+        try { el.setSelectionRange(caret, caret); } catch (_) {}
+      }
+      el.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        inputType: payload.inputType || 'insertText',
+        data: edit.insertText || null,
+      }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return { found: true, eligible: true, applied: true };
+    },
+    {
+      selectors: ev.selectors,
+      edit,
+      beforeLength: before.length,
+      selectionBefore: ev.selectionBefore,
+      inputType: ev.inputType,
+    }
+  ).catch(() => null);
+}
+
 // Return a Locator for the first selector that matches at least one element.
 async function resolve(page, selectors) {
   if (!selectors || !selectors.length) return null;
@@ -164,17 +243,25 @@ async function replayEvent(page, ev, settings) {
     case 'click': {
       const loc = await resolve(page, ev.selectors);
       if (loc) {
-        await loc.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
         try {
+          // locator.click already performs the required scroll/actionability
+          // checks. A separate scrollIntoView doubles that work and latency.
           await loc.click({ timeout: ACTION_TIMEOUT });
           return { ok: true, how: 'selector' };
         } catch (e) {
           if (!settings.coordFallback || !ev.frac) throw e;
         }
       }
-      if (settings.coordFallback && ev.frac) {
-        await clickByFraction(page, ev.frac);
+      // Never guess the coordinates of a navigation-capable control. A
+      // follower with slightly different content could otherwise open an
+      // unrelated URL and break deterministic tab ownership.
+      if (settings.coordFallback && ev.frac && !ev.navigationIntent && !ev.isSubmit) {
+        const clicked = await clickByFraction(page, ev.frac);
+        if (!clicked) return { ok: false, reason: 'frame-coordinate-unavailable' };
         return { ok: true, how: 'coords' };
+      }
+      if (settings.coordFallback && (ev.navigationIntent || ev.isSubmit)) {
+        return { ok: false, reason: 'unsafe-coordinate-fallback-blocked' };
       }
       return { ok: false, reason: 'not-found' };
     }
@@ -205,6 +292,9 @@ async function replayEvent(page, ev, settings) {
 
     case 'text-op': {
       if (ev.isPassword && settings.skipPassword) return { ok: false, reason: 'skip-password' };
+      const fast = await applyTextOperationFast(page, ev);
+      if (fast && fast.applied) return { ok: true, how: 'delta-fast' };
+      if (fast && fast.found === false) return { ok: false, reason: 'not-found' };
       const loc = await resolve(page, ev.selectors);
       if (!loc) return { ok: false, reason: 'not-found' };
       return applyTextOperation(page, loc, ev);

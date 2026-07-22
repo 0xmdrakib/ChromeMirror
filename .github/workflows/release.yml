@@ -36,6 +36,16 @@ jobs:
       - run: npm test
       - run: npm run dist
 
+      - name: Create installer-only ZIP
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist -Filter "Chrome-Mirror-*-win-x64.exe" | Select-Object -First 1
+          if (-not $installer) {
+            throw "Windows installer was not generated."
+          }
+          $zipPath = [System.IO.Path]::ChangeExtension($installer.FullName, ".zip")
+          Compress-Archive -LiteralPath $installer.FullName -DestinationPath $zipPath -Force
+
       - uses: actions/upload-artifact@v4
         with:
           name: chrome-mirror-windows-${{ github.ref_name }}

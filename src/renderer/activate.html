@@ -29,10 +29,12 @@
           id="keyInput"
           class="key-input"
           type="text"
+          aria-label="License key"
           placeholder="CMIR-XXXX-XXXX-XXXX-XXXX"
           spellcheck="false"
           autocapitalize="characters"
           inputmode="text"
+          maxlength="24"
           required
         />
         <button class="auth-btn" id="activateBtn" type="submit">Activate</button>
@@ -49,6 +51,7 @@
 
   <div id="toast" class="auth-toast" hidden></div>
 
+  <script src="license-key.js"></script>
   <script src="activate.js"></script>
 </body>
 </html>

@@ -215,14 +215,20 @@ function renderFollowerStatuses(statuses) {
     return;
   }
   container.innerHTML = statuses.map((follower) => {
-    const stateLabel = follower.state === 'ready' ? 'Ready' : follower.state === 'launching' ? 'Launching' : follower.state;
+    const stateLabel = follower.state === 'ready'
+      ? 'Ready'
+      : follower.state === 'launching'
+        ? 'Launching'
+        : follower.state === 'recovering'
+          ? 'Recovering'
+          : follower.state;
     const canRetry = ['closed', 'error', 'degraded'].includes(follower.state);
     return `
       <div class="follower-status" data-id="${follower.id}">
         <span class="health-dot ${follower.state}"></span>
         <span class="status-copy">
           <strong>${esc(follower.name)}</strong>
-          <small>${esc(follower.lastError || `${follower.tabs || 0} tab${follower.tabs === 1 ? '' : 's'} · queue ${follower.queueDepth || 0}`)}</small>
+          <small>${esc(follower.lastError || `${follower.tabs || 0} tab${follower.tabs === 1 ? '' : 's'} · queue ${follower.queueDepth || 0} · ${follower.lastLatencyMs || 0}ms`)}</small>
         </span>
         <span class="state-label ${follower.state}">${esc(stateLabel)}</span>
         <button class="icon-btn" data-act="focus" title="Focus browser"><span data-lucide="crosshair"></span></button>
@@ -252,10 +258,16 @@ function applyStatus(status) {
 
   $('mirrorSwitch').disabled = !state.running;
   $('mirrorSwitch').classList.toggle('on', state.mirroring);
-  $('toggleLabel').textContent = state.mirroring ? 'Mirroring on' : 'Mirroring off';
+  $('mirrorSwitch').setAttribute('aria-pressed', String(state.mirroring));
+  $('toggleLabel').textContent = !state.running
+    ? 'Mirroring off'
+    : state.mirroring ? 'Mirroring active' : 'Mirroring paused';
   $('mirrorHint').textContent = !state.running
     ? 'Start a session to begin.'
-    : state.mirroring ? 'Leader actions are broadcasting.' : 'Follower replay is paused.';
+    : state.mirroring ? 'Leader actions are broadcasting.' : 'Browsers stay open; follower replay is paused.';
+  $('pauseResumeBtn').disabled = !state.running;
+  $('pauseResumeBtn').classList.toggle('is-paused', state.running && !state.mirroring);
+  $('pauseResumeText').textContent = state.running && !state.mirroring ? 'Resume mirror' : 'Pause mirror';
   $('startBtn').disabled = state.running;
   $('stopBtn').disabled = !state.running;
   $('tileNowBtn').disabled = !state.running;
@@ -322,7 +334,8 @@ function wireEvents() {
       toast(cleanErr(error), true);
     }
   });
-  $('mirrorSwitch').addEventListener('click', () => bridge.setMirror(!state.mirroring));
+  $('mirrorSwitch').addEventListener('click', () => changeMirrorState(!state.mirroring));
+  $('pauseResumeBtn').addEventListener('click', () => changeMirrorState(!state.mirroring));
 
   $('followerStatusList').addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-act]');
@@ -370,6 +383,22 @@ function wireEvents() {
   $('setCoord').addEventListener('change', (event) => bridge.setSettings({ coordFallback: event.target.checked }));
   $('setFullSync').addEventListener('change', (event) => bridge.setSettings({ syncFullFieldValues: event.target.checked }));
   $('clearLog').addEventListener('click', () => renderLog([]));
+}
+
+async function changeMirrorState(enabled) {
+  if (!state.running) return;
+  const switchControl = $('mirrorSwitch');
+  const pauseControl = $('pauseResumeBtn');
+  switchControl.disabled = true;
+  pauseControl.disabled = true;
+  try {
+    const status = await bridge.setMirror(enabled);
+    applyStatus(status);
+    toast(enabled ? 'Mirroring resumed.' : 'Mirroring paused. Browser tabs remain open.');
+  } catch (error) {
+    toast(cleanErr(error), true);
+    applyStatus(await bridge.getStatus());
+  }
 }
 
 async function saveRoles() {

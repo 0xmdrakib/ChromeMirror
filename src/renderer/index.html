@@ -41,7 +41,6 @@
             <span class="license-dot"></span>
             <span><strong>Licensed</strong><small id="licenseLabel">Checking access</small></span>
           </div>
-          <span class="version">v2.0.0</span>
         </div>
       </aside>
 
@@ -134,6 +133,11 @@
                 <span><strong id="toggleLabel">Mirroring off</strong><small id="mirrorHint">Start a session to begin.</small></span>
               </div>
               <div class="command-actions">
+                <button class="btn secondary pause-resume" id="pauseResumeBtn" disabled>
+                  <span class="pause-icon" data-lucide="pause"></span>
+                  <span class="resume-icon" data-lucide="play"></span>
+                  <span id="pauseResumeText">Pause mirror</span>
+                </button>
                 <button class="btn danger subtle" id="stopBtn" disabled><span data-lucide="circle-stop"></span>Stop</button>
                 <button class="btn primary" id="startBtn"><span data-lucide="play"></span>Start session</button>
               </div>

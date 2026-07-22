@@ -1,6 +1,6 @@
 {
   "name": "chrome-mirror",
-  "version": "2.0.0",
+  "version": "2.0.15",
   "description": "Mirror one Chrome profile to up to 24 follower profiles with an optional hosted licensing service.",
   "main": "src/main/main.js",
   "author": "Md. Rakib",
@@ -13,12 +13,16 @@
     "test": "node --test tests/*.test.js",
     "test:web": "npm --prefix web test",
     "test:all": "npm test && npm run test:web",
+    "test:mirror-navigation": "node scripts/verify-mirror-navigation.js",
+    "test:real-chrome-webstore": "node scripts/verify-real-chrome-webstore.js",
+    "test:desktop-ui": "npm run prebuild && node scripts/verify-desktop-ui.js",
     "scan:secrets": "node scripts/check-secrets.js",
-    "prebuild": "npx electron scripts/compile.js",
+    "prebuild": "electron scripts/compile.js",
     "build:web": "npm --prefix web run build",
+    "verify:web-build": "node scripts/verify-web-build.js",
     "pack": "npm run prebuild && electron-builder --dir",
     "dist": "npm run prebuild && electron-builder --publish never",
-    "verify": "npm run scan:secrets && npm run lint && npm run typecheck && npm run test:all && npm run prebuild && npm run build:web"
+    "verify": "npm run scan:secrets && npm run lint && npm run typecheck && npm run test:all && npm run test:mirror-navigation && npm run test:desktop-ui && npm run prebuild && npm run verify:web-build"
   },
   "build": {
     "appId": "com.rakib.chromemirror",
@@ -40,8 +44,7 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "zip"
+        "nsis"
       ],
       "icon": "build/icon.ico"
     },

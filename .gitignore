@@ -15,4 +15,6 @@ web/.env.local
 
 # Test and web build output
 coverage/
+test-results/
+playwright-report/
 web/.next/

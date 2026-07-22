@@ -5,15 +5,73 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const listed = spawnSync(
-  'git',
-  ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
-  { cwd: root, encoding: 'utf8' }
-);
+const excludedDirectoryNames = new Set([
+  '.build',
+  '.git',
+  'build-app',
+  'coverage',
+  'dist',
+  'node_modules',
+  'test-results',
+]);
+const excludedDirectoryPaths = new Set([
+  'web/.next',
+  'web/build',
+  'web/out',
+]);
 
-if (listed.status !== 0) {
-  process.stderr.write(listed.stderr || 'Unable to list repository files.\n');
-  process.exit(listed.status || 1);
+function normalizeRelative(file) {
+  return file.split(path.sep).join('/');
+}
+
+function isExcluded(relative, entry) {
+  const normalized = normalizeRelative(relative);
+  const basename = path.basename(relative);
+
+  if (entry.isDirectory()) {
+    return (
+      excludedDirectoryNames.has(basename) ||
+      excludedDirectoryPaths.has(normalized)
+    );
+  }
+
+  if (entry.isSymbolicLink()) return true;
+  if (path.extname(basename).toLowerCase() === '.jsc') return true;
+  if (basename === '.env.example') return false;
+  return basename === '.env' || basename.startsWith('.env.');
+}
+
+function walkFiles(directory = root) {
+  const files = [];
+
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const absolute = path.join(directory, entry.name);
+    const relative = path.relative(root, absolute);
+    if (isExcluded(relative, entry)) continue;
+
+    if (entry.isDirectory()) {
+      files.push(...walkFiles(absolute));
+    } else if (entry.isFile()) {
+      files.push(normalizeRelative(relative));
+    }
+  }
+
+  return files;
+}
+
+function listFiles() {
+  const listed = spawnSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+    { cwd: root, encoding: 'utf8' }
+  );
+
+  if (listed.status === 0) {
+    return listed.stdout.split('\0').filter(Boolean);
+  }
+
+  console.log('secret scan: Git metadata unavailable; using ZIP-safe filesystem scan');
+  return walkFiles().sort();
 }
 
 const textExtensions = new Set([
@@ -36,7 +94,7 @@ function isPlaceholder(value) {
   );
 }
 
-for (const file of listed.stdout.split('\0').filter(Boolean)) {
+for (const file of listFiles()) {
   const absolute = path.resolve(root, file);
   if (!absolute.startsWith(root + path.sep) || !fs.existsSync(absolute)) continue;
   if (!textExtensions.has(path.extname(file).toLowerCase())) continue;

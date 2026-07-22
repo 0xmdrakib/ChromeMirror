@@ -89,6 +89,18 @@
 .auth-btn:active:not(:disabled) { transform: translateY(1px); }
 .auth-btn:disabled { opacity: .55; cursor: default; }
 
+.retry-status {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+.retry-status[data-state="checking"] { color: var(--muted); }
+.retry-status[data-state="success"] { color: var(--green); }
+.retry-status[data-state="error"] { color: var(--red); }
+
 .auth-error {
   margin-top: 14px;
   padding: 10px 12px;

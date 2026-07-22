@@ -54,7 +54,15 @@ const OBFUSCATOR_OPTS = {
 function ensureDir(p) { fs.mkdirSync(p, { recursive: true }); }
 
 function rmrf(p) {
-  try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) {}
+  fs.rmSync(p, {
+    recursive: true,
+    force: true,
+    // Windows can keep freshly used build files briefly locked while
+    // antivirus/indexing catches up. Retry instead of silently continuing
+    // with a half-removed staging directory.
+    maxRetries: 6,
+    retryDelay: 150,
+  });
 }
 
 function copyFile(src, dest) {
@@ -156,7 +164,7 @@ function obfuscateSource(code, filePath) {
   const outRendererDir = path.join(OUT, 'renderer');
   copyDir(rendererSrc, outRendererDir);
 
-  const rendererFiles = ['renderer.js', 'activate.js', 'blocked.js'];
+  const rendererFiles = ['renderer.js', 'license-key.js', 'activate.js', 'blocked.js'];
   for (const file of rendererFiles) {
     const filePath = path.join(outRendererDir, file);
     if (fs.existsSync(filePath)) {
@@ -174,7 +182,7 @@ function obfuscateSource(code, filePath) {
 
   // --- 5. Write a hardened package.json for the build ------------------------
   const licenseApiUrl = String(
-    process.env.LICENSE_API_URL || 'http://localhost:3000/api/v1/license'
+    process.env.LICENSE_API_URL || 'https://chromemirror.rakibhq.xyz/api/v1/license'
   ).replace(/\/$/, '');
   fs.writeFileSync(
     path.join(outMainDir, 'runtime-config.json'),

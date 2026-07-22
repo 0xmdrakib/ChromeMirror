@@ -14,11 +14,44 @@
  * follower using trusted input.
  */
 function installMirrorCapture() {
-  if (window.__mirrorCaptureInstalled) return;
+  // A popup's initial about:blank Window can inherit properties from its
+  // opener even though it does not inherit the opener's event listeners.
+  // Guard on the document itself so every new document gets a real listener
+  // installation instead of trusting an inherited window flag.
+  if (document.__mirrorCaptureInstalled) return;
+  try {
+    Object.defineProperty(document, '__mirrorCaptureInstalled', {
+      value: true,
+      configurable: false,
+    });
+  } catch (_) {
+    document.__mirrorCaptureInstalled = true;
+  }
   window.__mirrorCaptureInstalled = true;
+
+  function isBlockedHelperFrame() {
+    try {
+      if (window.top === window) return false;
+      var host = String(location.hostname || '').toLowerCase();
+      var pathname = String(location.pathname || '').toLowerCase();
+      return pathname === '/static/proxy.html'
+        && (
+          host === 'feedback-pa.clients6.google.com'
+          || host === 'clients6.google.com'
+          || host.slice(-20) === '.clients6.google.com'
+        );
+    } catch (_) {
+      return false;
+    }
+  }
 
   var emit = function (payload) {
     try {
+      // Google embeds gapi transport helpers such as
+      // feedback-pa.clients6.google.com/static/proxy.html in hidden frames.
+      // They are plumbing, not user-facing documents, and replaying their
+      // synthetic actions as trusted input can open the helper as a real tab.
+      if (isBlockedHelperFrame()) return;
       if (typeof window.__mirrorEmit === 'function') {
         window.__mirrorEmit(JSON.stringify(payload));
       }
@@ -28,7 +61,36 @@ function installMirrorCapture() {
   };
 
   function emitNav() {
+    // The capture script runs in every frame so iframe clicks and inputs can
+    // still be mirrored inside their matching follower frame. A frame's own
+    // History API changes, however, must never become a top-level follower
+    // navigation (for example Google's feedback proxy iframe).
+    try {
+      if (window.top !== window) return;
+    } catch (_) {
+      return;
+    }
     emit({ kind: 'nav', href: location.href, ts: Date.now() });
+  }
+
+  var tabActivationScheduled = false;
+  function emitTabActivation() {
+    try {
+      if (window.top !== window || document.visibilityState !== 'visible') return;
+    } catch (_) {
+      return;
+    }
+    if (tabActivationScheduled) return;
+    tabActivationScheduled = true;
+    setTimeout(function () {
+      tabActivationScheduled = false;
+      try {
+        if (document.visibilityState !== 'visible') return;
+      } catch (_) {
+        return;
+      }
+      emit({ kind: 'tab-activate', ts: Date.now() });
+    }, 0);
   }
 
   function isSensitiveChallenge(el) {
@@ -236,11 +298,24 @@ function installMirrorCapture() {
     try {
       text = (el.innerText || el.value || el.getAttribute('aria-label') || '').slice(0, 80);
     } catch (_) {}
+    var navigationIntent = false;
+    try {
+      var node = el;
+      while (node && node.nodeType === 1) {
+        var nodeTag = String(node.tagName || '').toLowerCase();
+        if (nodeTag === 'a' || nodeTag === 'area' || nodeTag === 'form') {
+          navigationIntent = true;
+          break;
+        }
+        node = node.parentElement;
+      }
+    } catch (_) {}
     return {
       selectors: selectorsFor(el),
       tag: el.tagName.toLowerCase(),
       type: el.getAttribute ? el.getAttribute('type') : null,
       text: text,
+      navigationIntent: navigationIntent,
     };
   }
 
@@ -248,6 +323,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'click',
     function (ev) {
+      if (!ev.isTrusted) return;
       var el = eventTarget(ev);
       if (!el || el.nodeType !== 1) return;
       if (isSensitiveChallenge(el)) return;
@@ -273,6 +349,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'focusin',
     function (ev) {
+      if (!ev.isTrusted) return;
       var el = eventTarget(ev);
       if (el && el.nodeType === 1) lastTextValues.set(el, textValue(el));
     },
@@ -281,6 +358,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'beforeinput',
     function (ev) {
+      if (!ev.isTrusted) return;
       var el = eventTarget(ev);
       if (!el || el.nodeType !== 1) return;
       if (isSensitiveChallenge(el)) return;
@@ -307,6 +385,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'input',
     function (ev) {
+      if (!ev.isTrusted) return;
       var el = eventTarget(ev);
       if (!el || el.nodeType !== 1) return;
       if (isSensitiveChallenge(el)) return;
@@ -351,6 +430,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'change',
     function (ev) {
+      if (!ev.isTrusted) return;
       var el = eventTarget(ev);
       if (!el || el.nodeType !== 1) return;
       var tag = el.tagName.toLowerCase();
@@ -384,6 +464,7 @@ function installMirrorCapture() {
   document.addEventListener(
     'keydown',
     function (ev) {
+      if (!ev.isTrusted) return;
       if (LONE_MOD[ev.key]) return;
       var hasMod = ev.ctrlKey || ev.metaKey || ev.altKey;
       if (!SPECIAL[ev.key] && !hasMod) return;
@@ -410,7 +491,8 @@ function installMirrorCapture() {
   var scrollScheduled = false;
   window.addEventListener(
     'scroll',
-    function () {
+    function (ev) {
+      if (!ev.isTrusted) return;
       if (scrollScheduled) return;
       scrollScheduled = true;
       setTimeout(function () {
@@ -419,10 +501,19 @@ function installMirrorCapture() {
         s.kind = 'scroll';
         s.ts = Date.now();
         emit(s);
-      }, 120);
+      // Absolute scroll positions are coalesced by the engine, so a two-frame
+      // cadence stays accurate while feeling substantially more immediate.
+      }, 32);
     },
     true
   );
+
+  // Chrome tab switches do not create a DOM click inside the page. Treat the
+  // newly visible top-level document as the authoritative active-tab signal
+  // so its paired follower tab is foregrounded immediately.
+  document.addEventListener('visibilitychange', emitTabActivation, true);
+  window.addEventListener('focus', emitTabActivation, true);
+  setTimeout(emitTabActivation, 0);
 
   // ---- SPA navigation ----
   try {

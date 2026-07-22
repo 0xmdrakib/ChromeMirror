@@ -20,7 +20,9 @@
 
 const { execFile } = require('child_process');
 const crypto = require('crypto');
+const fs = require('fs');
 const os = require('os');
+const path = require('path');
 
 function run(cmd, args, timeoutMs = 4000) {
   return new Promise((resolve) => {
@@ -69,8 +71,22 @@ async function volumeSerial() {
  * Caches the result so repeated calls are free.
  */
 let _cache = null;
-async function getDeviceId() {
+async function getDeviceId(storePath, preferredId) {
   if (_cache) return _cache;
+
+  // Existing signed activation claims are authoritative during migration.
+  // Persisting that id prevents a temporarily unavailable WMI/registry query
+  // from making the same PC look like a different computer on a later run.
+  if (isDeviceId(preferredId)) {
+    _cache = String(preferredId).toLowerCase();
+    persistDeviceId(storePath, _cache);
+    return _cache;
+  }
+  const persisted = readDeviceId(storePath);
+  if (persisted) {
+    _cache = persisted;
+    return _cache;
+  }
 
   const parts = await Promise.all([machineGuid(), smbiosUuid(), volumeSerial()]);
   const present = parts.filter(Boolean);
@@ -80,9 +96,44 @@ async function getDeviceId() {
     present.push(String((os.networkInterfaces() && Object.keys(os.networkInterfaces()).join('|')) || 'nics'));
   }
 
-  const material = parts.map((s) => s || '').join('|');
+  // Hash only identifiers that were actually returned. The result is stored
+  // immediately, so later command timeouts cannot change this installation's
+  // binding id.
+  const material = present.join('|');
   _cache = crypto.createHash('sha256').update(material).digest('hex').slice(0, 32);
+  persistDeviceId(storePath, _cache);
   return _cache;
+}
+
+function isDeviceId(value) {
+  return typeof value === 'string' && /^[0-9a-f]{32}$/i.test(value);
+}
+
+function readDeviceId(storePath) {
+  if (!storePath) return null;
+  try {
+    const value = fs.readFileSync(storePath, 'utf8').trim();
+    return isDeviceId(value) ? value.toLowerCase() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function persistDeviceId(storePath, value) {
+  if (!storePath || !isDeviceId(value)) return false;
+  const tempPath = `${storePath}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(storePath), { recursive: true });
+    fs.writeFileSync(tempPath, String(value).toLowerCase(), { encoding: 'utf8', mode: 0o600 });
+    try { fs.renameSync(tempPath, storePath); } catch (_) {
+      try { fs.unlinkSync(storePath); } catch (_) {}
+      fs.renameSync(tempPath, storePath);
+    }
+    return true;
+  } catch (_) {
+    try { fs.unlinkSync(tempPath); } catch (_) {}
+    return false;
+  }
 }
 
 /** Richer, non-binding machine info for the admin audit log. */
@@ -99,4 +150,4 @@ async function getMachineInfo() {
   };
 }
 
-module.exports = { getDeviceId, getMachineInfo };
+module.exports = { getDeviceId, getMachineInfo, isDeviceId, readDeviceId, persistDeviceId };

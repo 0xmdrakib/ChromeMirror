@@ -1,48 +1,60 @@
 'use strict';
+
 const form = document.getElementById('activateForm');
 const keyInput = document.getElementById('keyInput');
 const btn = document.getElementById('activateBtn');
 const errorBox = document.getElementById('errorBox');
 const toast = document.getElementById('toast');
+const {
+  formatLicenseKey,
+  formatLicenseKeyEdit,
+  formatLicenseKeyPaste,
+  isCompleteLicenseKey,
+} = window.ChromeMirrorLicenseKey;
 
-// Auto-format: CMIR-XXXX-XXXX-XXXX-XXXX as the user types.
-function formatKey(raw) {
-  let s = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  while (s.startsWith('CMIRCMIR')) {
-    s = s.slice(4);
-  }
-  const body = s.startsWith('CMIR') ? s.slice(4) : s;
-  if (body.length > 16) {
-    const chunks = [];
-    chunks.push(body.slice(0, 16));
-    let i = 16;
-    while (i < body.length) {
-      chunks.push(body.slice(i, i + 4));
-      i += 4;
-    }
-    return 'CMIR-' + chunks.join('-');
-  } else {
-    const chunks = [];
-    let i = 0;
-    while (i < body.length) {
-      chunks.push(body.slice(i, i + 4));
-      i += 4;
-    }
-    return chunks.length ? 'CMIR-' + chunks.join('-') : 'CMIR';
-  }
+let composing = false;
+let submitting = false;
+
+function applyFormattedValue(raw, caret) {
+  const next = formatLicenseKeyEdit(raw, caret);
+  keyInput.value = next.value;
+  keyInput.setSelectionRange(next.caret, next.caret);
+  errorBox.hidden = true;
 }
+
 keyInput.addEventListener('input', () => {
-  const f = formatKey(keyInput.value);
-  if (f !== keyInput.value) keyInput.value = f;
+  if (!composing) applyFormattedValue(keyInput.value, keyInput.selectionStart);
+});
+keyInput.addEventListener('compositionstart', () => {
+  composing = true;
+});
+keyInput.addEventListener('compositionend', () => {
+  composing = false;
+  applyFormattedValue(keyInput.value, keyInput.selectionStart);
+});
+keyInput.addEventListener('paste', (event) => {
+  const pasted = event.clipboardData && event.clipboardData.getData('text');
+  if (!pasted) return;
+
+  event.preventDefault();
+  const next = formatLicenseKeyPaste(
+    keyInput.value,
+    keyInput.selectionStart,
+    keyInput.selectionEnd,
+    pasted
+  );
+  keyInput.value = next.value;
+  keyInput.setSelectionRange(next.caret, next.caret);
   errorBox.hidden = true;
 });
 
-function showError(msg) {
-  errorBox.textContent = msg;
+function showError(message) {
+  errorBox.textContent = message;
   errorBox.hidden = false;
 }
-function showToast(msg) {
-  toast.textContent = msg;
+
+function showToast(message) {
+  toast.textContent = message;
   toast.hidden = false;
   setTimeout(() => { toast.hidden = true; }, 2200);
 }
@@ -57,35 +69,56 @@ const FRIENDLY_ERRORS = {
   NETWORK: 'Could not reach the license server. Check your internet connection and try again.',
 };
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const key = keyInput.value.trim();
-  if (!key || key.length < 10) { showError('Please enter your license key.'); return; }
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (submitting) return;
 
+  const key = formatLicenseKey(keyInput.value);
+  keyInput.value = key;
+  if (!isCompleteLicenseKey(key)) {
+    showError('Enter the complete license key from your dashboard.');
+    keyInput.focus();
+    return;
+  }
+
+  submitting = true;
   btn.disabled = true;
-  btn.textContent = 'Activating…';
+  keyInput.readOnly = true;
+  btn.textContent = 'Activating...';
   errorBox.hidden = true;
+  let activated = false;
+
   try {
-    const r = await window.api.activateLicense(key);
-    if (r.ok) {
-      showToast('Activated! Loading…');
-      // The main process swaps the window to the control panel.
+    const result = await window.api.activateLicense(key);
+    if (result.ok) {
+      activated = true;
+      btn.textContent = 'Activated';
+      showToast('Activated. Opening Chrome Mirror...');
       return;
     }
-    const code = r.code;
-    if (code === 'EMPTY') { showError('Please enter your license key.'); }
-    else if (code && ['ABORT_ERR', 'ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT'].includes(code)) {
+
+    const code = result.code;
+    if (code === 'EMPTY') {
+      showError('Please enter your license key.');
+    } else if (
+      code &&
+      ['ABORT_ERR', 'ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT'].includes(code)
+    ) {
       showError(FRIENDLY_ERRORS.NETWORK);
     } else {
-      showError(FRIENDLY_ERRORS[code] || r.error || 'Activation failed. Please try again.');
+      showError(FRIENDLY_ERRORS[code] || result.error || 'Activation failed. Please try again.');
     }
-  } catch (err) {
-    showError(err.message || 'Activation failed. Please try again.');
+  } catch (error) {
+    showError(error.message || 'Activation failed. Please try again.');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Activate';
+    if (!activated) {
+      submitting = false;
+      keyInput.readOnly = false;
+      btn.disabled = false;
+      btn.textContent = 'Activate';
+      keyInput.focus();
+    }
   }
 });
 
-// Focus the input on load.
 keyInput.focus();

@@ -148,8 +148,7 @@ body {
   font-weight: 600;
 }
 
-.license-mini small,
-.version {
+.license-mini small {
   font-size: 10px;
 }
 
